@@ -1,27 +1,35 @@
-import { auth } from '@/auth';
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 
-export default auth((req) => {
-  const isLoggedIn = !!req.auth;
+// Use cookie-based auth check instead of NextAuth auth() to avoid
+// URL construction issues in Next.js 16 proxy runtime.
+export default function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
-  const isAuthPage = pathname.startsWith('/auth');
-  const isApiAuth = pathname.startsWith('/api/auth');
 
-  if (isApiAuth) return NextResponse.next();
+  // Always allow auth routes and API routes through
+  if (
+    pathname.startsWith('/api/auth') ||
+    pathname.startsWith('/auth') ||
+    pathname.startsWith('/_next') ||
+    pathname.includes('.')
+  ) {
+    return NextResponse.next();
+  }
 
-  // Use req.nextUrl (always a full URL in Next.js middleware) as the base
-  if (!isLoggedIn && !isAuthPage) {
+  // Check for any NextAuth session cookie (v4 or v5)
+  const sessionCookie =
+    req.cookies.get('next-auth.session-token') ||
+    req.cookies.get('__Secure-next-auth.session-token') ||
+    req.cookies.get('authjs.session-token') ||
+    req.cookies.get('__Secure-authjs.session-token');
+
+  if (!sessionCookie) {
     const signIn = req.nextUrl.clone();
     signIn.pathname = '/auth/sign-in';
     return NextResponse.redirect(signIn);
   }
-  if (isLoggedIn && isAuthPage) {
-    const dashboard = req.nextUrl.clone();
-    dashboard.pathname = '/dashboard';
-    return NextResponse.redirect(dashboard);
-  }
+
   return NextResponse.next();
-});
+}
 
 export const config = {
   matcher: ['/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',],
