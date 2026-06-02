@@ -5,30 +5,48 @@ import express from 'express';
 import { AppServerlessModule } from '../src/app.serverless.module';
 
 const expressApp = express();
-let nestApp: any;
+let initialized = false;
+let initError: Error | null = null;
 
 async function bootstrap() {
-  if (nestApp) return nestApp;
+  if (initialized) return;
+  if (initError) throw initError;
 
-  nestApp = await NestFactory.create(AppServerlessModule, new ExpressAdapter(expressApp), {
-    logger: ['error', 'warn'],
-  });
+  try {
+    const nestApp = await NestFactory.create(
+      AppServerlessModule,
+      new ExpressAdapter(expressApp),
+      { logger: ['error', 'warn', 'log'] },
+    );
 
-  nestApp.enableCors({
-    origin: process.env.FRONTEND_URL || '*',
-    credentials: true,
-  });
+    nestApp.enableCors({
+      origin: process.env.FRONTEND_URL || '*',
+      credentials: true,
+    });
 
-  nestApp.useGlobalPipes(
-    new ValidationPipe({ whitelist: true, transform: true, forbidNonWhitelisted: false }),
-  );
+    nestApp.useGlobalPipes(
+      new ValidationPipe({ whitelist: true, transform: true, forbidNonWhitelisted: false }),
+    );
 
-  nestApp.setGlobalPrefix('api');
-  await nestApp.init();
-  return nestApp;
+    nestApp.setGlobalPrefix('api');
+    await nestApp.init();
+    initialized = true;
+  } catch (e) {
+    console.error('NestJS bootstrap failed:', e);
+    initError = e as Error;
+    throw e;
+  }
 }
 
 export default async function handler(req: any, res: any) {
-  await bootstrap();
-  expressApp(req, res);
+  try {
+    await bootstrap();
+    expressApp(req, res);
+  } catch (e: any) {
+    console.error('Handler error:', e?.message, e?.stack);
+    res.status(500).json({
+      error: 'Bootstrap failed',
+      message: e?.message || 'Unknown error',
+    });
+  }
 }
