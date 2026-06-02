@@ -1,0 +1,358 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id                 String   @id @default(cuid())
+  clerkId            String   @unique
+  email              String   @unique
+  name               String
+  weightKg           Float    @default(62)
+  targetWeightKg     Float    @default(70)
+  heightCm           Float?
+  age                Int?
+  profession         String?
+  // TDEE & fitness setup
+  activityLevel      String   @default("moderate") // sedentary/light/moderate/active/very_active
+  tdeeKcal           Int      @default(2600)
+  gymDaysPerWeek     Int      @default(4)
+  dailyProteinTarget Float    @default(140)
+  dailyCalorieTarget Int      @default(2800)
+  // Equipment & experience
+  gymAccess          String   @default("commercial") // commercial/home/none
+  fitnessLevel       String   @default("intermediate") // beginner/intermediate/advanced
+  // Onboarding
+  onboardingComplete Boolean  @default(false)
+  // Telegram integration
+  telegramChatId     String?
+  // Motivation & goals
+  primaryGoal        String   @default("lean_bulk") // lean_bulk/cut/maintain
+  motivationNote     String?
+  // Dynamic profile fields — drive all AI prompts
+  careerGoal         String   @default("devops") // devops/data_engineering/frontend/backend/ai_ml/custom
+  careerGoalCustom   String?  // free text if careerGoal == "custom"
+  languageGoals      String[] @default([]) // ["english","kannada","hindi"] — empty means no language learning
+  nativeLanguage     String   @default("telugu") // user's native language for lesson bridging
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  weightLogs        WeightLog[]
+  workoutLogs       WorkoutLog[]
+  sleepLogs         SleepLog[]
+  habitLogs         HabitLog[]
+  dietLogs          DietLog[]
+  studyLogs         StudyLog[]
+  englishLogs       EnglishLog[]
+  kannadaLogs       KannadaLog[]
+  dailyLessons      DailyLesson[]
+  memories          AIMemory[]
+  weeklyReports     WeeklyReport[]
+  lifeScores        LifeScore[]
+  bodyMeasurements  BodyMeasurement[]
+  vocabularyCards   VocabularyCard[]
+  errorPatterns     ErrorPattern[]
+  morningCheckins   MorningCheckin[]
+  workoutPrograms   WorkoutProgram[]
+
+  @@map("users")
+}
+
+model WeightLog {
+  id       String   @id @default(cuid())
+  userId   String
+  weightKg Float
+  note     String?
+  loggedAt DateTime @default(now())
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("weight_logs")
+}
+
+model WorkoutLog {
+  id                   String   @id @default(cuid())
+  userId               String
+  type                 String
+  exercises            Json
+  durationMin          Int
+  proteinG             Float?
+  caloriesBurned       Int?
+  notes                String?
+  sorenessLevel        Int?     // 1-5: post-workout soreness
+  progressNote         String?  // e.g. "Bench: 60kg→62.5kg"
+  sessionProgramId     String?  // link to WorkoutSession if part of a program
+  loggedAt             DateTime @default(now())
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("workout_logs")
+}
+
+model SleepLog {
+  id            String   @id @default(cuid())
+  userId        String
+  bedtime       DateTime
+  wakeupTime    DateTime
+  durationHours Float
+  qualityScore  Int
+  notes         String?
+  loggedAt      DateTime @default(now())
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sleep_logs")
+}
+
+model HabitLog {
+  id          String   @id @default(cuid())
+  userId      String
+  date        DateTime
+  gym         Boolean  @default(false)
+  sleep       Boolean  @default(false)
+  study       Boolean  @default(false)
+  english     Boolean  @default(false)
+  kannada     Boolean  @default(false)
+  // Dynamic habit tracking — additional custom habits
+  customHabits Json?   // {"meditation": true, "reading": false}
+  waterLitres Float    @default(0)
+  notes       String?
+  createdAt   DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@map("habit_logs")
+}
+
+model DietLog {
+  id            String   @id @default(cuid())
+  userId        String
+  meals         Json
+  totalCalories Int
+  totalProteinG Float
+  totalCarbsG   Float    @default(0)
+  totalFatsG    Float    @default(0)
+  waterLitres   Float    @default(0)
+  mealTiming    Json?    // {preWorkout: true, postWorkout: true, caseinBeforeBed: true}
+  loggedAt      DateTime @default(now())
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("diet_logs")
+}
+
+model StudyLog {
+  id          String   @id @default(cuid())
+  userId      String
+  topic       String
+  subtopics   String[]
+  durationMin Int
+  notes       String?
+  resources   String[]
+  loggedAt    DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("study_logs")
+}
+
+model EnglishLog {
+  id            String   @id @default(cuid())
+  userId        String
+  inputText     String
+  correctedText String
+  mistakes      Json
+  grammarScore  Int
+  loggedAt      DateTime @default(now())
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("english_logs")
+}
+
+model KannadaLog {
+  id              String   @id @default(cuid())
+  userId          String
+  wordsLearned    String[]
+  practiceText    String?
+  vocabularyCount Int      @default(0)
+  confidenceScore Int      @default(0)
+  loggedAt        DateTime @default(now())
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("kannada_logs")
+}
+
+model AIMemory {
+  id         String     @id @default(cuid())
+  userId     String
+  memoryType MemoryType
+  content    Json
+  relevance  Float      @default(1.0)
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, memoryType])
+  @@map("ai_memories")
+}
+
+model LifeScore {
+  id         String   @id @default(cuid())
+  userId     String
+  date       DateTime
+  fitness    Int      @default(0)
+  sleep      Int      @default(0)
+  discipline Int      @default(0)
+  career     Int      @default(0)
+  english    Int      @default(0)
+  kannada    Int      @default(0)
+  overall    Int      @default(0)
+  createdAt  DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("life_scores")
+}
+
+model WeeklyReport {
+  id         String   @id @default(cuid())
+  userId     String
+  weekStart  DateTime
+  weekEnd    DateTime
+  report     Json
+  aiInsights String
+  createdAt  DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("weekly_reports")
+}
+
+enum MemoryType {
+  USER_PROFILE
+  HABIT
+  FITNESS
+  LEARNING
+  CAREER
+  WEEKLY_REVIEW
+}
+
+model DailyLesson {
+  id          String    @id @default(cuid())
+  userId      String
+  language    String    // "english" | "kannada"
+  dayNumber   Int
+  topic       String
+  lessonData  Json
+  completed   Boolean   @default(false)
+  completedAt DateTime?
+  date        DateTime  @default(now())
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, language, dayNumber])
+  @@map("daily_lessons")
+}
+
+// NEW: Body measurements for comprehensive progress tracking
+model BodyMeasurement {
+  id          String   @id @default(cuid())
+  userId      String
+  chestCm     Float?
+  waistCm     Float?
+  hipCm       Float?
+  leftArmCm   Float?
+  rightArmCm  Float?
+  leftLegCm   Float?
+  rightLegCm  Float?
+  bodyFatPct  Float?
+  ffmi        Float?   // Fat-Free Mass Index (auto-calculated)
+  notes       String?
+  loggedAt    DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("body_measurements")
+}
+
+// NEW: Spaced repetition vocabulary cards
+model VocabularyCard {
+  id            String   @id @default(cuid())
+  userId        String
+  word          String
+  meaning       String
+  example       String?
+  pronunciation String?
+  nextReview    DateTime @default(now())
+  intervalDays  Int      @default(1)   // days until next review
+  easeFactor    Float    @default(2.5) // SM-2 ease factor
+  reviewCount   Int      @default(0)
+  successCount  Int      @default(0)
+  language      String   @default("english") // english/kannada
+  tags          String[]
+  createdAt     DateTime @default(now())
+  lastReviewed  DateTime?
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("vocabulary_cards")
+}
+
+// NEW: Track recurring English mistake patterns
+model ErrorPattern {
+  id        String   @id @default(cuid())
+  userId    String
+  errorType String   // "have_had", "articles", "tense", "preposition", etc.
+  count     Int      @default(1)
+  examples  Json     // [{original, corrected, date}]
+  lastSeen  DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, errorType])
+  @@map("error_patterns")
+}
+
+// NEW: Morning check-in for daily accountability
+model MorningCheckin {
+  id              String   @id @default(cuid())
+  userId          String
+  date            DateTime
+  mood            Int?     // 1-5
+  energy          Int?     // 1-5
+  yesterdayRating Int?     // 1-5
+  todayGoals      Json?    // ["go to gym", "hit 140g protein", "study 30min"]
+  completedVia    String   @default("web") // web/telegram
+  createdAt       DateTime @default(now())
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@map("morning_checkins")
+}
+
+// NEW: Structured workout programs (12-week plans)
+model WorkoutProgram {
+  id           String           @id @default(cuid())
+  userId       String
+  name         String           // "PPL 6-day Lean Bulk", "Upper/Lower 4-day"
+  split        String           // "PPL" | "Upper/Lower" | "Full Body"
+  daysPerWeek  Int              @default(4)
+  weekDuration Int              @default(12)
+  isActive     Boolean          @default(true)
+  startDate    DateTime         @default(now())
+  sessions     WorkoutSession[]
+  createdAt    DateTime         @default(now())
+  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("workout_programs")
+}
+
+// NEW: Individual sessions within a workout program
+model WorkoutSession {
+  id          String         @id @default(cuid())
+  programId   String
+  weekNumber  Int            // 1-12
+  dayLabel    String         // "Monday", "Push Day A"
+  splitType   String         // "Push" | "Pull" | "Legs" | "Upper" | "Lower"
+  exercises   Json           // [{name, sets, reps, targetWeightKg, notes, alternatives}]
+  completed   Boolean        @default(false)
+  completedAt DateTime?
+  actualLog   Json?          // actual performance logged
+  program     WorkoutProgram @relation(fields: [programId], references: [id], onDelete: Cascade)
+
+  @@map("workout_sessions")
+}

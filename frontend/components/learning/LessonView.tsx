@@ -1,0 +1,180 @@
+'use client';
+import { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { CheckCircle, XCircle, Volume2 } from 'lucide-react';
+
+interface LessonViewProps {
+  lesson: any;
+  showCompleteButton?: boolean;
+  onComplete?: () => void;
+  completing?: boolean;
+  completed?: boolean;
+  onSpeak?: (text: string) => void;
+}
+
+export function LessonView({ lesson, showCompleteButton, onComplete, completing, completed, onSpeak }: LessonViewProps) {
+  const [practiceAnswers, setPracticeAnswers] = useState<Record<number, string>>({});
+  const [checkedAnswers, setCheckedAnswers] = useState<Record<number, boolean>>({});
+  const [flippedCards, setFlippedCards] = useState<Record<number, boolean>>({});
+
+  if (!lesson) return null;
+
+  return (
+    <div className="space-y-4">
+      {/* Topic header */}
+      <div className="lifeos-card-glow">
+        <div className="flex items-center gap-2 mb-2">
+          <span className="text-xl">📚</span>
+          <h2 className="text-lg font-bold text-white">{lesson.topic}</h2>
+          {completed && (
+            <span className="text-xs bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-full px-2 py-0.5 ml-auto">
+              ✅ Completed
+            </span>
+          )}
+        </div>
+        <div className="bg-indigo-600/10 border border-indigo-600/20 rounded-lg p-3 mb-3">
+          <p className="text-xs text-indigo-400 font-medium mb-1">Simple Rule:</p>
+          <p className="text-sm text-white">{lesson.simpleRule}</p>
+        </div>
+        {lesson.whyItMatters && (
+          <p className="text-xs text-gray-500">💡 {lesson.whyItMatters}</p>
+        )}
+        {lesson.memoryTrick && (
+          <div className="mt-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3">
+            <p className="text-xs text-yellow-400 font-medium">🧠 Memory Trick:</p>
+            <p className="text-sm text-yellow-200 mt-1">{lesson.memoryTrick}</p>
+          </div>
+        )}
+      </div>
+
+      {/* Examples */}
+      {lesson.examples?.length > 0 && (
+        <div className="lifeos-card">
+          <p className="text-xs text-gray-500 uppercase tracking-wide mb-3">Examples</p>
+          <div className="space-y-3">
+            {lesson.examples.map((ex: any, i: number) => (
+              <div key={i} className="bg-[#0a0a0f] rounded-lg p-3 border border-[#1e1e36]">
+                <div className="flex items-start gap-2 mb-1">
+                  <XCircle size={14} className="text-red-400 mt-0.5 flex-shrink-0" />
+                  <span className="text-sm text-red-300 line-through">{ex.wrong}</span>
+                </div>
+                <div className="flex items-start gap-2 mb-2">
+                  <CheckCircle size={14} className="text-emerald-400 mt-0.5 flex-shrink-0" />
+                  <span className="text-sm text-emerald-300 font-medium">{ex.right}</span>
+                </div>
+                <p className="text-xs text-gray-500 ml-5">💡 {ex.tip}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Vocabulary Words */}
+      {lesson.vocabulary?.length > 0 && (
+        <div className="lifeos-card">
+          <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Today's New Words 📖</p>
+          <p className="text-xs text-gray-600 mb-4">Click a card to see the example</p>
+          <div className="grid grid-cols-1 gap-3">
+            {lesson.vocabulary.map((v: any, i: number) => (
+              <motion.div key={i}
+                initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.06 }}
+                onClick={() => setFlippedCards(p => ({ ...p, [i]: !p[i] }))}
+                className="cursor-pointer bg-[#0a0a0f] rounded-xl border border-[#1e1e36] hover:border-indigo-600/40 transition-all overflow-hidden">
+                <div className="p-3">
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-base font-bold text-white">{v.word}</span>
+                      <span className="text-xs text-cyan-400 font-mono">/{v.pronunciation}/</span>
+                      {onSpeak && (
+                        <button onClick={(e) => { e.stopPropagation(); onSpeak(v.word); }}
+                          className="text-gray-500 hover:text-gray-300">
+                          <Volume2 size={11} />
+                        </button>
+                      )}
+                    </div>
+                    <span className="text-xs text-gray-600">{flippedCards[i] ? '▲' : '▼'}</span>
+                  </div>
+                  <p className="text-sm text-emerald-400">{v.meaning}</p>
+                </div>
+                <AnimatePresence>
+                  {flippedCards[i] && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      className="border-t border-[#1e1e36] px-3 py-3 bg-[#12121e]">
+                      <p className="text-sm text-gray-300 mb-1 italic">"{v.example}"</p>
+                      {v.indianContext && (
+                        <p className="text-xs text-yellow-400">🇮🇳 {v.indianContext}</p>
+                      )}
+                      {v.useSentence && (
+                        <p className="text-xs text-indigo-400 mt-1">📝 {v.useSentence}</p>
+                      )}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Practice */}
+      {lesson.practice?.length > 0 && (
+        <div className="lifeos-card">
+          <p className="text-xs text-gray-500 uppercase tracking-wide mb-3">Practice — Fill in the blank</p>
+          <div className="space-y-4">
+            {lesson.practice.map((p: any, i: number) => (
+              <div key={i} className="bg-[#0a0a0f] rounded-lg p-3 border border-[#1e1e36]">
+                <p className="text-sm text-white mb-2">{p.fill}</p>
+                <div className="flex gap-2 items-center">
+                  <input
+                    className="lifeos-input flex-1 text-sm"
+                    placeholder="Your answer..."
+                    value={practiceAnswers[i] || ''}
+                    onChange={(e) => setPracticeAnswers(prev => ({ ...prev, [i]: e.target.value }))}
+                  />
+                  <button
+                    onClick={() => setCheckedAnswers(prev => ({ ...prev, [i]: true }))}
+                    className="lifeos-btn text-xs px-3">Check</button>
+                </div>
+                {checkedAnswers[i] && (
+                  <div className={`mt-2 text-xs px-3 py-1.5 rounded-lg ${
+                    practiceAnswers[i]?.toLowerCase().trim() === p.answer?.toLowerCase()
+                      ? 'bg-emerald-500/10 text-emerald-400'
+                      : 'bg-red-500/10 text-red-400'
+                  }`}>
+                    {practiceAnswers[i]?.toLowerCase().trim() === p.answer?.toLowerCase()
+                      ? '✅ Correct! Great job!'
+                      : `❌ Answer: "${p.answer}" — ${p.hint}`}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Speaking Challenge */}
+      {(lesson.speakingChallenge || lesson.speakingTip) && (
+        <div className="lifeos-card border-cyan-600/20 bg-cyan-600/5">
+          <p className="text-xs text-cyan-400 font-medium mb-2">🎯 Speaking Challenge</p>
+          <p className="text-base text-white font-medium mb-2">"{lesson.speakingChallenge || lesson.speakingTip}"</p>
+          <p className="text-xs text-gray-500">Say this sentence out loud 5 times. Confidence comes from practice! 💪</p>
+        </div>
+      )}
+
+      {/* Complete button */}
+      {showCompleteButton && !completed && (
+        <button
+          onClick={onComplete}
+          disabled={completing}
+          className="lifeos-btn w-full py-3 flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500">
+          <CheckCircle size={16} />
+          {completing ? 'Saving...' : 'Mark Lesson Complete ✅'}
+        </button>
+      )}
+    </div>
+  );
+}
