@@ -5,48 +5,49 @@ import express from 'express';
 import { AppServerlessModule } from '../src/app.serverless.module';
 
 const expressApp = express();
-let initialized = false;
-let initError: Error | null = null;
+let bootstrapPromise: Promise<void> | null = null;
+let bootstrapError: string | null = null;
 
-async function bootstrap() {
-  if (initialized) return;
-  if (initError) throw initError;
-
-  try {
-    const nestApp = await NestFactory.create(
-      AppServerlessModule,
-      new ExpressAdapter(expressApp),
-      { logger: ['error', 'warn', 'log'] },
-    );
-
-    nestApp.enableCors({
-      origin: process.env.FRONTEND_URL || '*',
-      credentials: true,
-    });
-
-    nestApp.useGlobalPipes(
-      new ValidationPipe({ whitelist: true, transform: true, forbidNonWhitelisted: false }),
-    );
-
-    nestApp.setGlobalPrefix('api');
-    await nestApp.init();
-    initialized = true;
-  } catch (e) {
-    console.error('NestJS bootstrap failed:', e);
-    initError = e as Error;
-    throw e;
-  }
+async function bootstrap(): Promise<void> {
+  const nestApp = await NestFactory.create(
+    AppServerlessModule,
+    new ExpressAdapter(expressApp),
+    { logger: false },
+  );
+  nestApp.enableCors({ origin: process.env.FRONTEND_URL || '*', credentials: true });
+  nestApp.useGlobalPipes(
+    new ValidationPipe({ whitelist: true, transform: true, forbidNonWhitelisted: false }),
+  );
+  nestApp.setGlobalPrefix('api');
+  await nestApp.init();
 }
 
 export default async function handler(req: any, res: any) {
-  try {
-    await bootstrap();
-    expressApp(req, res);
-  } catch (e: any) {
-    console.error('Handler error:', e?.message, e?.stack);
-    res.status(500).json({
-      error: 'Bootstrap failed',
-      message: e?.message || 'Unknown error',
+  // Fast health check before NestJS boots (useful for Vercel warmup pings)
+  if (req.url === '/api/health' || req.url === '/health') {
+    res.status(200).json({ status: 'ok', service: 'lifeos-backend', bootstrapped: !!bootstrapPromise, error: bootstrapError });
+    return;
+  }
+
+  if (!bootstrapPromise) {
+    bootstrapPromise = bootstrap().catch((e) => {
+      bootstrapError = e?.message || String(e);
+      bootstrapPromise = null; // allow retry
+      console.error('Bootstrap error:', e);
     });
   }
+
+  try {
+    await bootstrapPromise;
+  } catch (e: any) {
+    res.status(503).json({ error: 'Backend initializing', message: e?.message });
+    return;
+  }
+
+  if (bootstrapError) {
+    res.status(503).json({ error: 'Backend failed to start', message: bootstrapError });
+    return;
+  }
+
+  expressApp(req, res);
 }
