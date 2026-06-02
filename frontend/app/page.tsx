@@ -1,8 +1,8 @@
-import { auth } from '@/auth';
 import { redirect } from 'next/navigation';
 
-export default async function HomePage() {
-  const session = await auth();
-  if (session) redirect('/dashboard');
+// Middleware in middleware.ts handles auth redirect:
+// - logged in  → /dashboard
+// - logged out → /auth/sign-in
+export default function HomePage() {
   redirect('/auth/sign-in');
 }
