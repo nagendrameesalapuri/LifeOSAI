@@ -5,7 +5,7 @@ nixPkgs = ["nodejs_20"]
 cmds = ["npm install"]
 
 [phases.build]
-cmds = ["npm run build"]
+cmds = ["npm run build", "ls -la dist/ || echo 'dist/ is empty or missing'"]
 
 [start]
 cmd = "node dist/main"
