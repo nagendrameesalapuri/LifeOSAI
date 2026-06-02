@@ -3,15 +3,22 @@ import { NextResponse } from 'next/server';
 
 export default auth((req) => {
   const isLoggedIn = !!req.auth;
-  const isAuthPage = req.nextUrl.pathname.startsWith('/auth');
-  const isApiAuth = req.nextUrl.pathname.startsWith('/api/auth');
+  const { pathname } = req.nextUrl;
+  const isAuthPage = pathname.startsWith('/auth');
+  const isApiAuth = pathname.startsWith('/api/auth');
 
   if (isApiAuth) return NextResponse.next();
+
+  // Use req.nextUrl (always a full URL in Next.js middleware) as the base
   if (!isLoggedIn && !isAuthPage) {
-    return NextResponse.redirect(new URL('/auth/sign-in', req.url));
+    const signIn = req.nextUrl.clone();
+    signIn.pathname = '/auth/sign-in';
+    return NextResponse.redirect(signIn);
   }
   if (isLoggedIn && isAuthPage) {
-    return NextResponse.redirect(new URL('/dashboard', req.url));
+    const dashboard = req.nextUrl.clone();
+    dashboard.pathname = '/dashboard';
+    return NextResponse.redirect(dashboard);
   }
   return NextResponse.next();
 });
