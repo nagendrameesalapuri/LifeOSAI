@@ -30,10 +30,9 @@ export class TelegramService implements OnModuleInit {
 
     try {
       await this.bot.getMe();
-      await this.bot.startPolling();
       this.registerCommands();
       await this.loadActiveChatIds();
-      console.log('Telegram bot started');
+      console.log('Telegram bot started (webhook mode)');
     } catch (e) {
       console.log('Telegram bot token invalid — bot disabled');
       this.bot = null;
