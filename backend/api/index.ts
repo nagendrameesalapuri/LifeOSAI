@@ -2,7 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { ExpressAdapter } from '@nestjs/platform-express';
 import { ValidationPipe } from '@nestjs/common';
 import express from 'express';
-import { AppModule } from '../src/app.module';
+import { AppServerlessModule } from '../src/app.serverless.module';
 
 const expressApp = express();
 let nestApp: any;
@@ -10,7 +10,7 @@ let nestApp: any;
 async function bootstrap() {
   if (nestApp) return nestApp;
 
-  nestApp = await NestFactory.create(AppModule, new ExpressAdapter(expressApp), {
+  nestApp = await NestFactory.create(AppServerlessModule, new ExpressAdapter(expressApp), {
     logger: ['error', 'warn'],
   });
 
