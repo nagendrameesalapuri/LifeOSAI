@@ -32,11 +32,26 @@ export class TelegramService implements OnModuleInit {
       await this.bot.getMe();
       await this.bot.startPolling();
       this.registerCommands();
+      await this.loadActiveChatIds();
       console.log('Telegram bot started');
     } catch (e) {
       console.log('Telegram bot token invalid — bot disabled');
       this.bot = null;
     }
+  }
+
+  private async loadActiveChatIds() {
+    try {
+      const users = await (this.prisma.user.findMany as any)({
+        where: { telegramChatId: { not: null } },
+        select: { telegramChatId: true },
+      });
+      for (const u of users) {
+        const id = parseInt(u.telegramChatId);
+        if (!isNaN(id)) this.activeChatIds.add(id);
+      }
+      console.log(`Loaded ${this.activeChatIds.size} Telegram chat IDs from DB`);
+    } catch {}
   }
 
   private registerCommands() {
@@ -591,7 +606,7 @@ Welcome back! I'm your personal life coach.
   // Morning check-in cron: 7am daily
   @Cron('0 7 * * *')
   async sendMorningCheckins() {
-    if (!this.bot || this.activeChatIds.size === 0) return;
+    if (!this.bot) return;
 
     const users = await this.prisma.user.findMany({ select: { id: true, name: true } }).catch(() => []);
 
@@ -625,6 +640,7 @@ Welcome back! I'm your personal life coach.
   @Cron('0 20 * * *')
   async sendEveningNudges() {
     if (!this.bot) return;
+    await this.loadActiveChatIds();
 
     const users = await this.prisma.user.findMany({ select: { id: true, name: true } }).catch(() => []);
 
@@ -692,22 +708,42 @@ Welcome back! I'm your personal life coach.
   // Hourly water reminder
   @Cron('0 * * * *')
   async sendWaterReminders() {
-    if (!this.bot || this.activeChatIds.size === 0) return;
-    const today = new Date().toDateString();
+    if (!this.bot) return;
     const hour = new Date().getHours();
     if (hour < 7 || hour >= 23) return;
 
+    await this.loadActiveChatIds();
+    if (this.activeChatIds.size === 0) return;
+
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate() + 1);
+    const todayStr = new Date().toDateString();
+
     for (const chatId of this.activeChatIds) {
-      const tracker = this.waterTracker.get(chatId);
-      const liters = tracker?.date === today ? tracker.liters : 0;
-      if (liters >= this.WATER_GOAL) continue;
-
-      const remaining = this.WATER_GOAL - liters;
-      const percent = Math.round((liters / this.WATER_GOAL) * 100);
-      const filled = Math.round(percent / 20);
-      const bar = '💧'.repeat(filled) + '○'.repeat(5 - filled);
-
       try {
+        // Check in-memory first, fall back to DB
+        const tracker = this.waterTracker.get(chatId);
+        let liters = tracker?.date === todayStr ? tracker.liters : 0;
+
+        if (!tracker || tracker.date !== todayStr) {
+          const user = await this.getUser(chatId);
+          if (user) {
+            const dietLog = await this.prisma.dietLog.findFirst({
+              where: { userId: user.id, loggedAt: { gte: today, lt: tomorrow } },
+              orderBy: { loggedAt: 'desc' },
+            });
+            liters = dietLog?.waterLitres ?? 0;
+            this.waterTracker.set(chatId, { liters, date: todayStr });
+          }
+        }
+
+        if (liters >= this.WATER_GOAL) continue;
+
+        const remaining = this.WATER_GOAL - liters;
+        const percent = Math.round((liters / this.WATER_GOAL) * 100);
+        const filled = Math.round(percent / 20);
+        const bar = '💧'.repeat(filled) + '○'.repeat(5 - filled);
+
         await this.bot.sendMessage(chatId,
           `⏰ *Water Reminder!*\n\n${bar} ${percent}%\n📊 Today: ${liters.toFixed(1)}L / ${this.WATER_GOAL}L\n💧 Need: ${remaining.toFixed(1)}L more\n\nDrink a glass now! /water 0.25`,
           { parse_mode: 'Markdown' });
