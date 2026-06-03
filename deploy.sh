@@ -1,56 +1,29 @@
 #!/bin/bash
-# ─────────────────────────────────────────────────────────────
-# LIFEOS AI — Production Deploy Script (Free Tier)
-# Deploys: Backend → Fly.io | Frontend → Vercel | DB → Supabase
-# ─────────────────────────────────────────────────────────────
+# LIFEOS AI — Production Deploy Script
+# Backend: any Node.js host (Railway, Render, VPS)
+# Frontend: Vercel (auto-deploys via GitHub integration)
+# DB: Supabase
 
 set -e
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-CYAN='\033[0;36m'
-NC='\033[0m'
+GREEN='\033[0;32m'; YELLOW='\033[1;33m'; CYAN='\033[0;36m'; NC='\033[0m'
 
-echo -e "${CYAN}Deploying LIFEOS AI to production (free tier)...${NC}"
+echo -e "${CYAN}Deploying LIFEOS AI...${NC}"; echo ""
+
+echo -e "${YELLOW}[1/2] Pushing database schema to Supabase...${NC}"
+cd backend && npx prisma db push
+echo -e "${GREEN}✓ Schema pushed${NC}"; cd ..
+
+echo -e "${YELLOW}[2/2] Frontend deploys automatically via Vercel on git push.${NC}"
+echo -e "${YELLOW}      Backend: push to your host (Railway/Render/VPS) manually.${NC}"
 echo ""
-
-# ─── 1. Push DB schema ─────────────────────────────────────
-echo -e "${YELLOW}[1/3] Pushing database schema to Supabase...${NC}"
-cd backend
-npx prisma db push
-echo -e "${GREEN}✓ Schema pushed${NC}"
-
-# ─── 2. Deploy backend to Fly.io ───────────────────────────
-echo -e "${YELLOW}[2/3] Deploying backend to Fly.io...${NC}"
-
-if ! command -v flyctl &> /dev/null; then
-  echo "Installing flyctl..."
-  curl -L https://fly.io/install.sh | sh
-fi
-
-flyctl deploy --remote-only
-echo -e "${GREEN}✓ Backend deployed to Fly.io${NC}"
-cd ..
-
-# ─── 3. Deploy frontend to Vercel ──────────────────────────
-echo -e "${YELLOW}[3/3] Deploying frontend to Vercel...${NC}"
-
-if ! command -v vercel &> /dev/null; then
-  npm install -g vercel
-fi
-
-cd frontend
-vercel --prod
-echo -e "${GREEN}✓ Frontend deployed to Vercel${NC}"
-cd ..
-
+echo -e "${CYAN}Required GitHub Secrets (Settings → Secrets → Actions):${NC}"
+echo "  DATABASE_URL          → Supabase connection string"
+echo "  DIRECT_URL            → Supabase direct URL"
+echo "  AUTH_SECRET           → Same value as your backend AUTH_SECRET"
+echo "  AUTH_GOOGLE_ID        → Google OAuth client ID"
+echo "  AUTH_GOOGLE_SECRET    → Google OAuth client secret"
+echo "  NEXT_PUBLIC_API_URL   → Your production backend URL + /api"
+echo "  NEXTAUTH_URL          → Your production frontend URL"
+echo "  BACKEND_URL           → Production backend URL (for keep-alive ping)"
 echo ""
-echo -e "${CYAN}═══════════════════════════════════════${NC}"
-echo -e "${GREEN}🚀 LIFEOS is live on free tier!${NC}"
-echo -e "${CYAN}═══════════════════════════════════════${NC}"
-echo ""
-echo "Set these secrets in GitHub repo settings:"
-echo "  FLY_API_TOKEN               → flyctl auth token"
-echo "  DATABASE_URL                → Supabase connection"
-echo "  NEXT_PUBLIC_API_URL         → Your Fly.io backend URL"
-echo "  BACKEND_URL                 → Same Fly.io URL (for keepalive)"
-echo ""
+echo -e "${GREEN}Done!${NC}"
