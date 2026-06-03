@@ -11,7 +11,7 @@ datasource db {
 
 model User {
   id                 String   @id @default(cuid())
-  clerkId            String   @unique
+  clerkId            String   @unique  // now stores Google OAuth sub (formerly Clerk ID)
   email              String   @unique
   name               String
   weightKg           Float    @default(62)

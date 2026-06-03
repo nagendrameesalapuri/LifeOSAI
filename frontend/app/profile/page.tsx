@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSession } from 'next-auth/react';
 import { useApi } from '@/lib/hooks/useApi';
+import { cache } from '@/lib/cache';
 import { Sidebar } from '@/components/layout/Sidebar';
 import {
   User, Edit3, Save, X, CheckCircle, Dumbbell, Moon, BookOpen,
@@ -116,14 +117,20 @@ export default function ProfilePage() {
   }, []);
 
   async function loadAll() {
-    setLoading(true);
+    const cachedProfile = cache.get('user_profile');
+    const cachedStats = cache.get('user_stats');
+    if (cachedProfile) { setProfile(cachedProfile); setDraft({ ...cachedProfile }); }
+    if (cachedStats) setStats(cachedStats);
+    if (cachedProfile && cachedStats) setLoading(false);
+
     const [p, s] = await Promise.all([
       api.getProfile().catch(() => null),
       api.getUserStats().catch(() => null),
     ]);
     setProfile(p);
     setStats(s);
-    if (p) setDraft({ ...p });
+    if (p) { setDraft({ ...p }); cache.set('user_profile', p, 5 * 60 * 1000); }
+    if (s) cache.set('user_stats', s, 5 * 60 * 1000);
     setLoading(false);
   }
 
@@ -135,9 +142,13 @@ export default function ProfilePage() {
     setSaving(true);
     try {
       await api.updateProfile(draft);
-      setProfile({ ...profile, ...draft });
+      const updated = { ...profile, ...draft };
+      setProfile(updated);
+      cache.delete('user_profile');
+      cache.delete('user_stats');
+      cache.delete('dashboard_data');
+      cache.set('user_profile', updated, 5 * 60 * 1000);
       setEditing(false);
-      // Re-calc TDEE after body stat change
       await api.getTDEE().catch(() => {});
     } catch (e) { console.error(e); }
     finally { setSaving(false); }

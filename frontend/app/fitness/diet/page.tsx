@@ -40,27 +40,38 @@ export default function DietPage() {
   const [error, setError] = useState('');
 
   useEffect(() => {
+    // Show cached data instantly
+    const cachedDiet = cache.get('diet_today');
+    if (cachedDiet) {
+      applyDietData(cachedDiet.diet, cachedDiet.water);
+      setLoadingToday(false);
+    }
+    // Refresh in background
     Promise.all([
       api.getTodayDiet().catch(() => null),
       api.getTodayWater().catch(() => null),
     ]).then(([diet, waterData]) => {
-      // API returns { log: DietLog | null, targets: {...} }
-      const log = diet?.log;
-      if (diet?.targets) setTargets(diet.targets);
-      if (log?.meals?.length) {
-        setMeals((log.meals as any[]).map((m: any) => ({
-          name: m.name?.replace(/\s*\(.*\)$/, '') || m.name,
-          quantity: m.name?.match(/\((.+)\)$/)?.[1] || '',
-          calories: m.calories || 0,
-          protein: m.proteinG || m.protein || 0,
-          carbs: m.carbs || 0,
-          fat: m.fat || 0,
-          fiber: m.fiber || 0,
-        })));
-      }
-      if (waterData?.litres !== undefined) setWater(waterData.litres);
+      cache.set('diet_today', { diet, water: waterData }, 2 * 60 * 1000);
+      applyDietData(diet, waterData);
     }).finally(() => setLoadingToday(false));
   }, []);
+
+  function applyDietData(diet: any, waterData: any) {
+    const log = diet?.log;
+    if (diet?.targets) setTargets(diet.targets);
+    if (log?.meals?.length) {
+      setMeals((log.meals as any[]).map((m: any) => ({
+        name: m.name?.replace(/\s*\(.*\)$/, '') || m.name,
+        quantity: m.name?.match(/\((.+)\)$/)?.[1] || '',
+        calories: m.calories || 0,
+        protein: m.proteinG || m.protein || 0,
+        carbs: m.carbs || 0,
+        fat: m.fat || 0,
+        fiber: m.fiber || 0,
+      })));
+    }
+    if (waterData?.litres !== undefined) setWater(waterData.litres);
+  }
 
   const [targets, setTargets] = useState({ calories: 2800, protein: 140, water: 4 });
 
@@ -104,7 +115,7 @@ export default function DietPage() {
       });
       setSaved(true);
       setMeals([]);
-      // Invalidate dashboard diet cache so it refreshes on next visit
+      cache.delete('diet_today');
       cache.delete('dashboard_diet');
       cache.delete('dashboard_data');
       setTimeout(() => setSaved(false), 2000);

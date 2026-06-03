@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useApi } from '@/lib/hooks/useApi';
+import { cache } from '@/lib/cache';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { CheckCircle2, Circle, Flame, Droplets, Sun, Trophy } from 'lucide-react';
 import Link from 'next/link';
@@ -26,6 +27,11 @@ export default function HabitsPage() {
   useEffect(() => { loadData(); }, []);
 
   async function loadData() {
+    const cachedScores = cache.get('habit_scores');
+    const cachedStreaks = cache.get('habit_streaks');
+    if (cachedScores) setScores(cachedScores);
+    if (cachedStreaks) setStreaks(cachedStreaks);
+
     try {
       const [scoreData, streakData] = await Promise.all([
         api.getHabitScores(),
@@ -33,6 +39,8 @@ export default function HabitsPage() {
       ]);
       setScores(scoreData);
       setStreaks(streakData);
+      if (scoreData) cache.set('habit_scores', scoreData, 5 * 60 * 1000);
+      if (streakData) cache.set('habit_streaks', streakData, 5 * 60 * 1000);
     } catch {}
   }
 
@@ -40,6 +48,9 @@ export default function HabitsPage() {
     setSaving(true);
     try {
       await api.habitCheckin({ ...checked, waterLitres: water });
+      cache.delete('habit_scores');
+      cache.delete('habit_streaks');
+      cache.delete('dashboard_data');
       setSaved(true);
       loadData();
       setTimeout(() => setSaved(false), 2000);

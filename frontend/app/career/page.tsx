@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useApi } from '@/lib/hooks/useApi';
+import { cache } from '@/lib/cache';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { CheckCircle2, Circle, Clock, BookOpen } from 'lucide-react';
 
@@ -23,7 +24,13 @@ export default function CareerPage() {
   useEffect(() => { loadRoadmap(); }, []);
 
   async function loadRoadmap() {
-    try { setRoadmap(await api.getCareerRoadmap()); } catch {}
+    const hit = cache.get('career_roadmap');
+    if (hit) setRoadmap(hit);
+    try {
+      const data = await api.getCareerRoadmap();
+      setRoadmap(data);
+      cache.set('career_roadmap', data, 5 * 60 * 1000);
+    } catch {}
   }
 
   async function logStudy() {

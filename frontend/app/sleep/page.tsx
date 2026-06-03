@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useApi } from '@/lib/hooks/useApi';
+import { cache } from '@/lib/cache';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Moon, Sun } from 'lucide-react';
 
@@ -11,7 +12,14 @@ export default function SleepPage() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
-  useEffect(() => { api.getSleepScore().then(setScore).catch(() => {}); }, []);
+  useEffect(() => {
+    const hit = cache.get('sleep_score');
+    if (hit) setScore(hit);
+    api.getSleepScore().then((data) => {
+      setScore(data);
+      cache.set('sleep_score', data, 5 * 60 * 1000);
+    }).catch(() => {});
+  }, []);
 
   async function logSleep() {
     setSaving(true);
@@ -23,6 +31,9 @@ export default function SleepPage() {
       const wakeDate = bH > wH
         ? new Date(Date.now() + 86400000).toISOString().split('T')[0]
         : today;
+      cache.delete('sleep_score');
+      cache.delete('dashboard_data');
+      cache.delete('analytics_trends');
       await api.logSleep({
         bedtime: `${today}T${form.bedtime}:00`,
         wakeupTime: `${wakeDate}T${form.wakeupTime}:00`,
@@ -32,6 +43,7 @@ export default function SleepPage() {
       setSaved(true);
       const newScore = await api.getSleepScore();
       setScore(newScore);
+      if (newScore) cache.set('sleep_score', newScore, 5 * 60 * 1000);
       setTimeout(() => setSaved(false), 2000);
     } catch (e) { console.error(e); } finally { setSaving(false); }
   }

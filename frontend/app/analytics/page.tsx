@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState, useMemo } from 'react';
 import { useApi } from '@/lib/hooks/useApi';
+import { cache } from '@/lib/cache';
 import { Sidebar } from '@/components/layout/Sidebar';
 import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid,
@@ -30,10 +31,17 @@ export default function AnalyticsPage() {
   const api = useApi();
   const [trends, setTrends] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [timeRange, setTimeRange] = useState<TimeRange>('30D');
 
   useEffect(() => {
-    api.getTrends().then(setTrends).catch(console.error).finally(() => setLoading(false));
+    const hit = cache.get('analytics_trends');
+    if (hit) { setTrends(hit); setLoading(false); }
+    api.getTrends().then((data) => {
+      setTrends(data);
+      setError(false);
+      cache.set('analytics_trends', data, 5 * 60 * 1000);
+    }).catch(() => setError(!hit)).finally(() => setLoading(false));
   }, []);
 
   const activeDays = TIME_RANGES.find((t) => t.label === timeRange)?.days ?? null;
@@ -116,6 +124,11 @@ export default function AnalyticsPage() {
         {loading ? (
           <div className="grid grid-cols-2 gap-6">
             {[...Array(6)].map((_, i) => <div key={i} className="h-64 skeleton rounded-xl" />)}
+          </div>
+        ) : error ? (
+          <div className="lifeos-card text-center py-12">
+            <p className="text-gray-400 mb-3">Could not load analytics data.</p>
+            <button onClick={() => { setError(false); setLoading(true); api.getTrends().then(d => { setTrends(d); cache.set('analytics_trends', d, 5*60*1000); }).catch(() => setError(true)).finally(() => setLoading(false)); }} className="text-indigo-400 hover:text-indigo-300 text-sm underline">Retry</button>
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-6">
