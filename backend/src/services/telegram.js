@@ -39,14 +39,27 @@ async function init() {
   const token = process.env.TELEGRAM_BOT_TOKEN;
   if (!token) { console.log('TELEGRAM_BOT_TOKEN not set — Telegram bot disabled'); return; }
 
-  const isProduction = process.env.NODE_ENV === 'production';
+  const backendUrl = process.env.BACKEND_URL; // e.g. https://lifeosai-production.up.railway.app
+  const isProduction = process.env.NODE_ENV === 'production' && !!backendUrl;
 
   try {
-    bot = new TelegramBot(token, { polling: !isProduction });
-    await bot.getMe();
+    if (isProduction) {
+      // Webhook mode: Railway receives Telegram updates via HTTPS POST
+      bot = new TelegramBot(token, { polling: false });
+      await bot.getMe();
+      const webhookUrl = `${backendUrl}/api/telegram/webhook`;
+      await bot.setWebhook(webhookUrl);
+      console.log(`Telegram bot started (webhook mode) → ${webhookUrl}`);
+    } else {
+      // Polling mode: local development
+      bot = new TelegramBot(token, { polling: true });
+      await bot.getMe();
+      // Clear any existing webhook so polling works
+      await bot.deleteWebhook();
+      console.log('Telegram bot started (polling mode)');
+    }
     await loadActiveChatIds();
     registerCommands();
-    console.log(`Telegram bot started (${isProduction ? 'webhook' : 'polling'} mode)`);
   } catch (e) {
     console.log('Telegram bot token invalid — bot disabled:', e.message);
     bot = null;

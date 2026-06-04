@@ -55,22 +55,38 @@ async function authMiddleware(req, res, next) {
 
     // Auto-create user on first Google sign-in
     if (!user) {
-      user = await prisma.user.create({
-        data: {
-          clerkId: googleSub || `google_${Date.now()}`,
-          email: email || `${googleSub}@google.user`,
-          name,
-          weightKg: 62,
-          targetWeightKg: 70,
-        },
-      });
+      try {
+        user = await prisma.user.create({
+          data: {
+            clerkId: googleSub || `google_${Date.now()}`,
+            email: email || `${googleSub}@google.user`,
+            name,
+            weightKg: 62,
+            targetWeightKg: 70,
+          },
+        });
+      } catch (createErr) {
+        // Unique constraint race — try finding the user one more time
+        if (createErr.code === 'P2002') {
+          user = await prisma.user.findFirst({
+            where: { OR: [{ clerkId: googleSub }, { email }].filter(Boolean) },
+          }).catch(() => null);
+        }
+        if (!user) {
+          console.error('Auth: user create failed:', createErr.code, createErr.message?.slice(0, 100));
+          return res.status(503).json({ message: 'Database unavailable. Please try again shortly.' });
+        }
+      }
     }
 
     req.user = user;
     next();
   } catch (err) {
-    console.error('Auth middleware error:', err.message);
-    return res.status(401).json({ message: 'Authentication failed' });
+    console.error('Auth middleware error:', err.code, err.message);
+    const isDbError = err.code?.startsWith('P') || err.message?.includes('database') || err.message?.includes('connect');
+    return res.status(isDbError ? 503 : 401).json({
+      message: isDbError ? 'Database unavailable. Please try again shortly.' : 'Authentication failed',
+    });
   }
 }
 
