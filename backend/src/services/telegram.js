@@ -53,11 +53,11 @@ async function init() {
       await bot.setWebhook(webhookUrl);
       console.log(`Telegram bot started (webhook mode) → ${webhookUrl}`);
     } else {
-      // Polling mode: local development
+      // Polling mode: local development only
       bot = new TelegramBot(token, { polling: true });
       await bot.getMe();
-      // Clear any existing webhook so polling works
-      await bot.deleteWebhook();
+      // Clear any stale webhook — method name varies by library version, try both
+      try { await (bot.deleteWebHook || bot.deleteWebhook).call(bot); } catch {}
       console.log('Telegram bot started (polling mode)');
     }
     await loadActiveChatIds();
