@@ -1,17 +1,18 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const rateLimit = require('express-rate-limit');
+const { rateLimit, ipKeyGenerator } = require('express-rate-limit');
 
 const authMiddleware = require('./middleware/auth');
 const { initCronJobs } = require('./cron/jobs');
 const telegramService = require('./services/telegram');
 
-// Per-user rate limiters (keyed by userId set in auth middleware)
+// Per-user rate limiters — keyed by userId for authenticated routes,
+// ipKeyGenerator (IPv6-safe) as fallback for unauthenticated requests.
 const aiRateLimit = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
   max: 30,
-  keyGenerator: (req) => req.user?.id || req.ip,
+  keyGenerator: (req) => req.user?.id || ipKeyGenerator(req),
   message: { error: 'Too many AI requests. Limit: 30 per hour.' },
   standardHeaders: true,
   legacyHeaders: false,
@@ -20,7 +21,7 @@ const aiRateLimit = rateLimit({
 const strictAiLimit = rateLimit({
   windowMs: 60 * 1000, // 1 minute
   max: 5,
-  keyGenerator: (req) => req.user?.id || req.ip,
+  keyGenerator: (req) => req.user?.id || ipKeyGenerator(req),
   message: { error: 'Slow down — max 5 AI requests per minute.' },
   standardHeaders: true,
   legacyHeaders: false,

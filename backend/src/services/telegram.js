@@ -40,7 +40,9 @@ async function init() {
   if (!token) { console.log('TELEGRAM_BOT_TOKEN not set — Telegram bot disabled'); return; }
 
   const backendUrl = process.env.BACKEND_URL; // e.g. https://lifeosai-production.up.railway.app
-  const isProduction = process.env.NODE_ENV === 'production' && !!backendUrl;
+  // Use webhook whenever BACKEND_URL is set (Railway), regardless of NODE_ENV.
+  // Polling mode only when running locally without BACKEND_URL.
+  const isProduction = !!backendUrl;
 
   try {
     if (isProduction) {
