@@ -34,6 +34,7 @@ export function useApi() {
   );
 
   return {
+    getToken,
     getProfile: () => withToken(api.getProfile),
     updateProfile: (data: any) => withToken((t) => api.updateProfile(t, data)),
     getUserStats: () => withToken(api.getUserStats),
@@ -68,6 +69,9 @@ export function useApi() {
     getDietStats: () => withToken(api.getDietStats),
     getNutrition: (food: string, qty: string) => withToken((t) => api.getNutrition(t, food, qty)),
     parseMeal: (description: string) => withToken((t) => api.parseMeal(t, description)),
+    getFrequentMeals: () => withToken(api.getFrequentMeals),
+    parseMealFromPhoto: (imageBase64: string, mediaType?: string) => withToken((t) => api.parseMealFromPhoto(t, imageBase64, mediaType)),
+    getBarcodeNutrition: (barcode: string) => withToken((t) => api.getBarcodeNutrition(t, barcode)),
     getShoppingList: () => withToken(api.getShoppingList),
     getMealTiming: () => withToken(api.getMealTiming),
     getTDEE: () => withToken(api.getTDEE),

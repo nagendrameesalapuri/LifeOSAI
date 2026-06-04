@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useApi } from '@/lib/hooks/useApi';
 import { cache } from '@/lib/cache';
@@ -168,6 +169,7 @@ const ALL_SCORE_CARDS = [
 /* ══════════════════════════════════════════════════════════════════════ */
 export default function DashboardPage() {
   const api = useApi();
+  const router = useRouter();
   const [dashboard, setDashboard] = useState<any>(null);
   const [breakdown, setBreakdown] = useState<any>(null);
   const [insights, setInsights] = useState<string>('');
@@ -199,6 +201,12 @@ export default function DashboardPage() {
 
       if (!cachedDash && dash) cache.set('dashboard_data', dash, DASHBOARD_TTL);
       if (!cachedDiet && diet) cache.set('dashboard_diet', diet, DASHBOARD_TTL);
+
+      // Redirect new users to onboarding before showing empty dashboard
+      if (dash?.user?.onboardingComplete === false) {
+        router.replace('/onboarding');
+        return;
+      }
 
       setDashboard(dash);
       setNutrition(diet);
@@ -302,6 +310,52 @@ export default function DashboardPage() {
             Refresh
           </button>
         </motion.div>
+
+        {/* Weight goal progress bar */}
+        {!loading && dashboard?.user?.weightKg && dashboard?.user?.targetWeightKg && (() => {
+          const current = dashboard.user.weightKg;
+          const target = dashboard.user.targetWeightKg;
+          const start = Math.min(current, target) - 2;
+          const total = Math.abs(target - start);
+          const gained = Math.abs(current - start);
+          const pct = Math.min(100, Math.round((gained / total) * 100));
+          const isGaining = target > current;
+          const diff = Math.abs(target - current).toFixed(1);
+          const milestone = pct >= 100;
+          return (
+            <motion.div
+              initial={{ opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              className={`lifeos-card py-3 px-4 ${milestone ? 'border-emerald-500/40 bg-emerald-500/5' : ''}`}
+            >
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm">⚖️</span>
+                  <span className="text-xs font-medium text-gray-300">Weight Journey</span>
+                  {milestone && <span className="text-xs text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-full px-2 py-0.5">🎉 Goal Reached!</span>}
+                </div>
+                <span className="text-xs text-gray-500">
+                  {milestone ? `${target}kg achieved!` : `${diff}kg to go`}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] text-gray-600 w-10 text-right">{start.toFixed(0)}kg</span>
+                <div className="flex-1 h-2 bg-white/5 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all duration-700 ${milestone ? 'bg-emerald-500' : 'bg-indigo-500'}`}
+                    style={{ width: `${pct}%` }}
+                  />
+                </div>
+                <span className="text-[10px] text-gray-600 w-10">{target}kg</span>
+              </div>
+              <div className="flex justify-between mt-1">
+                <span className="text-[10px] text-indigo-400">{current}kg now</span>
+                <span className="text-[10px] text-gray-600">{pct}% complete</span>
+                <span className="text-[10px] text-gray-500">🎯 {target}kg target</span>
+              </div>
+            </motion.div>
+          );
+        })()}
 
         {/* Morning check-in banner */}
         {!loading && !checkinDone && (

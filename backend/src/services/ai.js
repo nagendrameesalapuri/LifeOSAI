@@ -2,22 +2,41 @@ const anthropic = require('../lib/anthropic');
 const prisma = require('../lib/prisma');
 const memory = require('./memory');
 const { SYSTEM_PROMPTS, KANNADA_CURRICULUM } = require('../data/prompts');
+const cache = require('../lib/cache');
+const promptService = require('./prompt.service');
 
 const HAIKU = 'claude-haiku-4-5-20251001';
 const SONNET = 'claude-sonnet-4-6';
 
-const workoutPlanCache = new Map();
-const dietPlanCache = new Map();
-const morningCheckinCache = new Map();
-const proactiveInsightsCache = new Map();
+// withFallback: stores last-good response in Redis (persists across deploys) or memory.
+// TTL: 7 days. If Claude is down, serves stale with _fallback: true flag.
+async function withFallback(userId, type, fn) {
+  try {
+    const result = await fn();
+    // Store the raw result for fallback. Wrap strings in an object so _fallback flag always works.
+    const stored = typeof result === 'string' ? { _str: result } : result;
+    await cache.set(`fallback:${userId}:${type}`, stored, 7 * 24 * 3600);
+    return result;
+  } catch (e) {
+    const stale = await cache.get(`fallback:${userId}:${type}`);
+    if (stale) {
+      console.warn(`AI fallback served for ${type}: ${e.message}`);
+      // Unwrap strings; objects get _fallback: true so callers can show "Generated X ago"
+      if (stale._str !== undefined) return stale._str;
+      return { ...stale, _fallback: true };
+    }
+    throw e;
+  }
+}
 
 function dayKey(userId) {
   const d = new Date();
   return `${userId}_${d.getFullYear()}_${d.getMonth()}_${d.getDate()}`;
 }
 
-function midnight() {
-  const m = new Date(); m.setHours(23, 59, 59, 999); return m.getTime();
+function midnightTtl() {
+  const m = new Date(); m.setHours(23, 59, 59, 999);
+  return Math.max(60, Math.floor((m.getTime() - Date.now()) / 1000));
 }
 
 function extractJson(raw) {
@@ -43,11 +62,19 @@ async function getUserProfile(userId) {
 }
 
 async function chat(userId, message) {
+  return chatWithHistory(userId, message, []);
+}
+
+async function chatWithHistory(userId, message, history = []) {
   const context = await memory.getContextualMemory(userId);
+  const messages = [
+    ...history.slice(-20).map(m => ({ role: m.role, content: m.content })),
+    { role: 'user', content: message },
+  ];
   const response = await anthropic.messages.create({
     model: SONNET, max_tokens: 1024,
-    system: SYSTEM_PROMPTS.MAIN_COACH(context),
-    messages: [{ role: 'user', content: message }],
+    system: await promptService.get('MAIN_COACH', context),
+    messages,
   });
   return response.content[0].text;
 }
@@ -64,19 +91,21 @@ async function correctEnglish(text, userId) {
 }
 
 async function generateWorkoutPlan(userId) {
-  const key = dayKey(userId);
-  const cached = workoutPlanCache.get(key);
-  if (cached && cached.expiresAt > Date.now()) return cached.data;
+  const key = `workout_plan:${dayKey(userId)}`;
+  const cached = await cache.get(key);
+  if (cached) return cached;
 
-  const context = await memory.getContextualMemory(userId);
-  const response = await anthropic.messages.create({
-    model: SONNET, max_tokens: 2048,
-    system: SYSTEM_PROMPTS.WORKOUT_PLAN(context),
-    messages: [{ role: 'user', content: 'Generate my workout plan for today based on my history and goals.' }],
+  return withFallback(userId, 'workout_plan', async () => {
+    const context = await memory.getContextualMemory(userId);
+    const response = await anthropic.messages.create({
+      model: SONNET, max_tokens: 2048,
+      system: await promptService.get('WORKOUT_PLAN', context),
+      messages: [{ role: 'user', content: 'Generate my workout plan for today based on my history and goals.' }],
+    });
+    const data = extractJson(response.content[0].text) || { plan: response.content[0].text };
+    await cache.set(key, data, midnightTtl());
+    return data;
   });
-  const data = extractJson(response.content[0].text) || { plan: response.content[0].text };
-  workoutPlanCache.set(key, { data, expiresAt: midnight() });
-  return data;
 }
 
 async function generateWorkoutProgram(userId) {
@@ -91,19 +120,21 @@ async function generateWorkoutProgram(userId) {
 }
 
 async function generateDietPlan(userId) {
-  const key = dayKey(userId);
-  const cached = dietPlanCache.get(key);
-  if (cached && cached.expiresAt > Date.now()) return cached.data;
+  const key = `diet_plan:${dayKey(userId)}`;
+  const cached = await cache.get(key);
+  if (cached) return cached;
 
-  const context = await memory.getContextualMemory(userId);
-  const response = await anthropic.messages.create({
-    model: HAIKU, max_tokens: 3000,
-    system: SYSTEM_PROMPTS.DIET_PLAN(context),
-    messages: [{ role: 'user', content: 'Generate my meal plan for today with meal timing based on my goals.' }],
+  return withFallback(userId, 'diet_plan', async () => {
+    const context = await memory.getContextualMemory(userId);
+    const response = await anthropic.messages.create({
+      model: HAIKU, max_tokens: 3000,
+      system: await promptService.get('DIET_PLAN', context),
+      messages: [{ role: 'user', content: 'Generate my meal plan for today with meal timing based on my goals.' }],
+    });
+    const data = extractJson(response.content[0].text) || { plan: response.content[0].text };
+    await cache.set(key, data, midnightTtl());
+    return data;
   });
-  const data = extractJson(response.content[0].text) || { plan: response.content[0].text };
-  dietPlanCache.set(key, { data, expiresAt: midnight() });
-  return data;
 }
 
 async function getKannadaLesson(userId, dayOverride) {
@@ -114,14 +145,16 @@ async function getKannadaLesson(userId, dayOverride) {
   const dayNumber = curriculumIndex + 1;
   const nativeLang = userProfile?.nativeLanguage || 'telugu';
 
-  const response = await anthropic.messages.create({
-    model: SONNET, max_tokens: 2500,
-    system: SYSTEM_PROMPTS.KANNADA_LESSON(userProfile),
-    messages: [{ role: 'user', content: `Day ${dayNumber} of ${KANNADA_CURRICULUM.length}.\nTheme: "${curriculum.theme}"\nLevel: ${curriculum.level}\nTeach this topic with 5-7 words and 2-3 sentences for a heritage learner whose native language is ${nativeLang}.` }],
+  return withFallback(userId, 'kannada_lesson', async () => {
+    const response = await anthropic.messages.create({
+      model: SONNET, max_tokens: 2500,
+      system: await promptService.get('KANNADA_LESSON', userProfile),
+      messages: [{ role: 'user', content: `Day ${dayNumber} of ${KANNADA_CURRICULUM.length}.\nTheme: "${curriculum.theme}"\nLevel: ${curriculum.level}\nTeach this topic with 5-7 words and 2-3 sentences for a heritage learner whose native language is ${nativeLang}.` }],
+    });
+    const parsed = extractJson(response.content[0].text);
+    if (parsed) return { ...parsed, dayNumber, curriculum: curriculum.level };
+    return { theme: curriculum.theme, dayNumber, curriculum: curriculum.level, parseError: true };
   });
-  const parsed = extractJson(response.content[0].text);
-  if (parsed) return { ...parsed, dayNumber, curriculum: curriculum.level };
-  return { theme: curriculum.theme, dayNumber, curriculum: curriculum.level, parseError: true };
 }
 
 async function careerCoach(userId, message) {
@@ -136,23 +169,27 @@ async function careerCoach(userId, message) {
 }
 
 async function generateWeeklyReport(userId) {
-  const context = await memory.getContextualMemory(userId);
-  const response = await anthropic.messages.create({
-    model: SONNET, max_tokens: 3000,
-    system: SYSTEM_PROMPTS.WEEKLY_REPORT(context),
-    messages: [{ role: 'user', content: 'Generate my complete weekly life report with week-over-week comparison.' }],
+  return withFallback(userId, 'weekly_report', async () => {
+    const context = await memory.getContextualMemory(userId);
+    const response = await anthropic.messages.create({
+      model: SONNET, max_tokens: 3000,
+      system: SYSTEM_PROMPTS.WEEKLY_REPORT(context),
+      messages: [{ role: 'user', content: 'Generate my complete weekly life report with week-over-week comparison.' }],
+    });
+    return response.content[0].text;
   });
-  return response.content[0].text;
 }
 
 async function generateDailyPlan(userId) {
-  const context = await memory.getContextualMemory(userId);
-  const response = await anthropic.messages.create({
-    model: SONNET, max_tokens: 1500,
-    system: SYSTEM_PROMPTS.MAIN_COACH(context),
-    messages: [{ role: 'user', content: 'Generate my complete daily plan for today: workout, diet with timing, study topic, English practice, Kannada word, and top 3 priorities.' }],
+  return withFallback(userId, 'daily_plan', async () => {
+    const context = await memory.getContextualMemory(userId);
+    const response = await anthropic.messages.create({
+      model: SONNET, max_tokens: 1500,
+      system: await promptService.get('MAIN_COACH', context),
+      messages: [{ role: 'user', content: 'Generate my complete daily plan for today: workout, diet with timing, study topic, English practice, Kannada word, and top 3 priorities.' }],
+    });
+    return response.content[0].text;
   });
-  return response.content[0].text;
 }
 
 async function getEnglishLesson(topic, userId) {
@@ -178,13 +215,15 @@ async function getEnglishLesson(topic, userId) {
   const todayTopic = topic || DAILY_TOPICS[dayOfYear % DAILY_TOPICS.length];
   const dayNumber = dayOfYear % DAILY_TOPICS.length + 1;
 
-  const response = await anthropic.messages.create({
-    model: SONNET, max_tokens: 2000,
-    system: SYSTEM_PROMPTS.ENGLISH_LESSON(userProfile),
-    messages: [{ role: 'user', content: `Day ${dayNumber}. Topic: "${todayTopic}".\nTeach this grammar topic and give 5 new vocabulary words for an Indian English learner.` }],
+  return withFallback(userId || 'anon', 'english_lesson', async () => {
+    const response = await anthropic.messages.create({
+      model: SONNET, max_tokens: 2000,
+      system: await promptService.get('ENGLISH_LESSON', userProfile),
+      messages: [{ role: 'user', content: `Day ${dayNumber}. Topic: "${todayTopic}".\nTeach this grammar topic and give 5 new vocabulary words for an Indian English learner.` }],
+    });
+    const raw = response.content[0].text.replace(/```json?\n?|\n?```/g, '').trim();
+    try { return JSON.parse(raw); } catch { return { topic: todayTopic, dayNumber, error: raw }; }
   });
-  const raw = response.content[0].text.replace(/```json?\n?|\n?```/g, '').trim();
-  try { return JSON.parse(raw); } catch { return { topic: todayTopic, dayNumber, error: raw }; }
 }
 
 async function practiceEnglishSpeaking(situation) {
@@ -207,59 +246,66 @@ async function analyzeErrorPatterns(patterns) {
 }
 
 async function generateAiInsights(userId) {
-  const context = await memory.getContextualMemory(userId);
-  const response = await anthropic.messages.create({
-    model: HAIKU, max_tokens: 512,
-    system: SYSTEM_PROMPTS.MAIN_COACH(context),
-    messages: [{ role: 'user', content: 'Give me 3 short AI insights about my performance this week. Be specific with numbers. One sentence each.' }],
+  return withFallback(userId, 'ai_insights', async () => {
+    const context = await memory.getContextualMemory(userId);
+    const response = await anthropic.messages.create({
+      model: HAIKU, max_tokens: 512,
+      system: SYSTEM_PROMPTS.MAIN_COACH(context),
+      messages: [{ role: 'user', content: 'Give me 3 short AI insights about my performance this week. Be specific with numbers. One sentence each.' }],
+    });
+    return response.content[0].text;
   });
-  return response.content[0].text;
 }
 
 async function generateProactiveInsights(userId) {
-  const key = dayKey(userId);
-  const cached = proactiveInsightsCache.get(key);
-  if (cached && cached.expiresAt > Date.now()) return cached.data;
+  const key = `proactive_insights:${dayKey(userId)}`;
+  const cached = await cache.get(key);
+  if (cached) return cached;
 
-  const context = await memory.getContextualMemory(userId);
-  const response = await anthropic.messages.create({
-    model: HAIKU, max_tokens: 1000,
-    system: SYSTEM_PROMPTS.PROACTIVE_INSIGHTS(context),
-    messages: [{ role: 'user', content: 'Analyze my data and give me specific proactive insights and nudges.' }],
+  return withFallback(userId, 'proactive_insights', async () => {
+    const context = await memory.getContextualMemory(userId);
+    const response = await anthropic.messages.create({
+      model: HAIKU, max_tokens: 1000,
+      system: SYSTEM_PROMPTS.PROACTIVE_INSIGHTS(context),
+      messages: [{ role: 'user', content: 'Analyze my data and give me specific proactive insights and nudges.' }],
+    });
+    const data = extractJson(response.content[0].text) || { insights: [], weekPattern: response.content[0].text };
+    await cache.set(key, data, midnightTtl());
+    return data;
   });
-  const data = extractJson(response.content[0].text) || { insights: [], weekPattern: response.content[0].text };
-  proactiveInsightsCache.set(key, { data, expiresAt: midnight() });
-  return data;
 }
 
 async function generateMorningCheckin(userId) {
-  const key = dayKey(userId);
-  const cached = morningCheckinCache.get(key);
-  if (cached && cached.expiresAt > Date.now()) return cached.data;
+  const key = `morning_checkin:${dayKey(userId)}`;
+  const cached = await cache.get(key);
+  if (cached) return cached;
 
-  const context = await memory.getContextualMemory(userId);
-  const response = await anthropic.messages.create({
-    model: HAIKU, max_tokens: 800,
-    system: SYSTEM_PROMPTS.MORNING_CHECKIN(context),
-    messages: [{ role: 'user', content: 'Generate my morning check-in for today.' }],
+  return withFallback(userId, 'morning_checkin', async () => {
+    const context = await memory.getContextualMemory(userId);
+    const response = await anthropic.messages.create({
+      model: HAIKU, max_tokens: 800,
+      system: SYSTEM_PROMPTS.MORNING_CHECKIN(context),
+      messages: [{ role: 'user', content: 'Generate my morning check-in for today.' }],
+    });
+    const data = extractJson(response.content[0].text) || { greeting: 'Good morning!', message: response.content[0].text };
+    await cache.set(key, data, midnightTtl());
+    return data;
   });
-  const data = extractJson(response.content[0].text) || { greeting: 'Good morning!', message: response.content[0].text };
-  morningCheckinCache.set(key, { data, expiresAt: midnight() });
-  return data;
 }
 
 async function generateScoreBreakdown(userId, scores) {
-  const context = await memory.getContextualMemory(userId);
-  const scoresText = Object.entries(scores).map(([k, v]) => `${k}: ${v}/100`).join(', ');
-  const response = await anthropic.messages.create({
-    model: HAIKU, max_tokens: 1500,
-    system: SYSTEM_PROMPTS.SCORE_BREAKDOWN(context),
-    messages: [{ role: 'user', content: `Current scores: ${scoresText}. Explain why each score is what it is and how to improve.` }],
+  return withFallback(userId, 'score_breakdown', async () => {
+    const context = await memory.getContextualMemory(userId);
+    const scoresText = Object.entries(scores).map(([k, v]) => `${k}: ${v}/100`).join(', ');
+    const response = await anthropic.messages.create({
+      model: HAIKU, max_tokens: 1500,
+      system: SYSTEM_PROMPTS.SCORE_BREAKDOWN(context),
+      messages: [{ role: 'user', content: `Current scores: ${scoresText}. Explain why each score is what it is and how to improve.` }],
+    });
+    try { return JSON.parse(response.content[0].text.replace(/```json?\n?|\n?```/g, '').trim()); } catch { return null; }
   });
-  try { return JSON.parse(response.content[0].text.replace(/```json?\n?|\n?```/g, '').trim()); } catch { return null; }
 }
 
-// Direct Anthropic client access for diet service
 async function callHaiku(prompt) {
   const response = await anthropic.messages.create({
     model: HAIKU, max_tokens: 500,
@@ -268,10 +314,25 @@ async function callHaiku(prompt) {
   return response.content[0].text;
 }
 
+async function callHaikuVision(imageBase64, mediaType, prompt) {
+  const response = await anthropic.messages.create({
+    model: HAIKU, max_tokens: 1000,
+    messages: [{
+      role: 'user',
+      content: [
+        { type: 'image', source: { type: 'base64', media_type: mediaType, data: imageBase64 } },
+        { type: 'text', text: prompt },
+      ],
+    }],
+  });
+  return response.content[0].text;
+}
+
 module.exports = {
-  chat, correctEnglish, generateWorkoutPlan, generateWorkoutProgram,
+  chat, chatWithHistory, correctEnglish, generateWorkoutPlan, generateWorkoutProgram,
+  callHaiku, callHaikuVision,
   generateDietPlan, getKannadaLesson, careerCoach, generateWeeklyReport,
   generateDailyPlan, getEnglishLesson, practiceEnglishSpeaking,
   analyzeErrorPatterns, generateAiInsights, generateProactiveInsights,
-  generateMorningCheckin, generateScoreBreakdown, callHaiku,
+  generateMorningCheckin, generateScoreBreakdown,
 };

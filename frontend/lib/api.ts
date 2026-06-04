@@ -98,6 +98,10 @@ export const api = {
   getMorningCheckin: (token: string) => apiCall('/habits/morning-checkin', {}, token),
   replaceDiet: (token: string, data: any) =>
     apiCall('/diet/replace', { method: 'POST', body: JSON.stringify(data) }, token),
+  getFrequentMeals: (token: string) => apiCall('/diet/frequent-meals', {}, token),
+  parseMealFromPhoto: (token: string, imageBase64: string, mediaType = 'image/jpeg') =>
+    apiCall('/diet/parse-photo', { method: 'POST', body: JSON.stringify({ imageBase64, mediaType }) }, token),
+  getBarcodeNutrition: (token: string, barcode: string) => apiCall(`/diet/barcode/${encodeURIComponent(barcode)}`, {}, token),
   getCorrelationInsights: (token: string) => apiCall('/analytics/correlations', {}, token),
 
   // AI

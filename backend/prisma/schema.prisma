@@ -357,3 +357,13 @@ model WorkoutSession {
 
   @@map("workout_sessions")
 }
+
+model PromptTemplate {
+  id        String   @id @default(cuid())
+  key       String   @unique  // matches SYSTEM_PROMPTS key, e.g. "MAIN_COACH"
+  body      String   // full prompt body with {{context}} and optional {{extra}} placeholders
+  version   Int      @default(1)
+  updatedAt DateTime @updatedAt
+
+  @@map("prompt_templates")
+}

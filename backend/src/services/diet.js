@@ -165,4 +165,38 @@ async function getTDEE(userId) {
   return updateUserTargets(userId);
 }
 
-module.exports = { updateUserTargets, logDiet, replaceDiet, getTodayDiet, getDietHistory, getDietPlan, getShoppingList, getMealTimingAdvice, getTodayWater, logWater, parseMeal, getNutrition, getDietStats, getTDEE };
+async function parseMealFromPhoto(imageBase64, mediaType = 'image/jpeg') {
+  const response = await ai.callHaikuVision(imageBase64, mediaType,
+    `Analyze this food photo and identify all items. For each food item visible, estimate the quantity and calculate nutritional values.
+Return ONLY a JSON array (no markdown):
+[{"name":"food name","quantity":"estimated amount","calories":number,"protein":number,"carbs":number,"fat":number,"fiber":number}]
+Be accurate with Indian food. If unclear, estimate conservatively.`
+  );
+  try {
+    const json = response.trim().replace(/```json?\n?|\n?```/g, '').trim();
+    return { items: JSON.parse(json), source: 'photo' };
+  } catch { return { items: [], source: 'photo', error: 'Could not parse photo' }; }
+}
+
+async function getFrequentMeals(userId) {
+  const logs = await prisma.dietLog.findMany({ where: { userId }, orderBy: { loggedAt: 'desc' }, take: 30 });
+  const mealCounts = {};
+  logs.forEach(l => {
+    if (!Array.isArray(l.meals)) return;
+    l.meals.forEach((m) => {
+      const rawName = m.name?.trim();
+      if (!rawName) return;
+      // Normalise key to lowercase for dedup; preserve original casing from first occurrence
+      const key = rawName.toLowerCase();
+      if (!mealCounts[key]) mealCounts[key] = { displayName: rawName, count: 0, calories: m.calories || 0, protein: m.proteinG || m.protein || 0, carbs: m.carbs || 0, fat: m.fat || 0 };
+      mealCounts[key].count++;
+    });
+  });
+  return Object.values(mealCounts)
+    .filter(v => v.count >= 2)
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 8)
+    .map(({ displayName, count, calories, protein, carbs, fat }) => ({ name: displayName, count, calories, protein, carbs, fat }));
+}
+
+module.exports = { updateUserTargets, logDiet, replaceDiet, getTodayDiet, getDietHistory, getDietPlan, getShoppingList, getMealTimingAdvice, getTodayWater, logWater, parseMeal, parseMealFromPhoto, getNutrition, getDietStats, getTDEE, getFrequentMeals };

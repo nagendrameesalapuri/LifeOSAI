@@ -506,4 +506,14 @@ function processWebhook(body) {
   if (bot && process.env.NODE_ENV === 'production') bot.processUpdate(body);
 }
 
-module.exports = { init, processWebhook, sendMorningCheckins, sendEveningNudges, sendWeeklyPlanning, sendWaterReminders };
+async function sendPatternNudge(chatId, nudges) {
+  if (!bot || !nudges.length) return;
+  let text = `🧠 *Pattern Alert — ${new Date().toLocaleDateString('en-IN', { weekday: 'long' })}*\n\n`;
+  nudges.forEach(n => {
+    text += `${n.emoji} *${n.priority === 'high' ? 'ACTION NEEDED' : 'HEADS UP'}*\n${n.message}\n\n`;
+  });
+  text += `_Based on your actual data patterns, not generic advice._`;
+  try { await bot.sendMessage(chatId, text, { parse_mode: 'Markdown' }); } catch (e) { console.error('Pattern nudge send error:', e.message); }
+}
+
+module.exports = { init, processWebhook, sendMorningCheckins, sendEveningNudges, sendWeeklyPlanning, sendWaterReminders, sendPatternNudge };

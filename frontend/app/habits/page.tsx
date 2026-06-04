@@ -173,6 +173,48 @@ export default function HabitsPage() {
           </div>
         </div>
 
+        {/* WHY streaks break — pattern insights */}
+        {scores?.logs && scores.logs.length >= 7 && (() => {
+          const logs = scores.logs;
+          const insights: { habit: string; insight: string; emoji: string }[] = [];
+          const dayGym: Record<string, { total: number; hit: number }> = {};
+          logs.forEach((l: any) => {
+            const day = new Date(l.date).toLocaleDateString('en-US', { weekday: 'short' });
+            if (!dayGym[day]) dayGym[day] = { total: 0, hit: 0 };
+            dayGym[day].total++;
+            if (l.gym) dayGym[day].hit++;
+          });
+          const weakDay = Object.entries(dayGym).filter(([, v]) => v.total >= 2).sort(([, a], [, b]) => (a.hit / a.total) - (b.hit / b.total))[0];
+          if (weakDay && weakDay[1].hit / weakDay[1].total < 0.4) {
+            insights.push({ habit: 'gym', emoji: '💪', insight: `${weakDay[0]} is your weakest gym day (${Math.round(weakDay[1].hit / weakDay[1].total * 100)}% attendance). Plan something specific for ${weakDay[0]}.` });
+          }
+
+          const engPct = logs.filter((l: any) => l.english).length / logs.length;
+          const studyPct = logs.filter((l: any) => l.study).length / logs.length;
+          if (engPct < 0.3 && studyPct > 0.5) insights.push({ habit: 'english', emoji: '🗣️', insight: `You study consistently but skip English practice ${Math.round((1 - engPct) * 100)}% of days. 5 min of /english is all it takes.` });
+
+          const gymPct7 = logs.slice(0, 7).filter((l: any) => l.gym).length / 7;
+          const gymPct14 = logs.slice(7, 14).filter((l: any) => l.gym).length / Math.min(7, logs.slice(7, 14).length);
+          if (gymPct14 > gymPct7 + 0.2) insights.push({ habit: 'trend', emoji: '📉', insight: `Gym consistency dropping this week (${Math.round(gymPct7 * 100)}%) vs last week (${Math.round(gymPct14 * 100)}%). What changed?` });
+
+          if (!insights.length) return null;
+          return (
+            <div className="lifeos-card mb-6 border-amber-500/20 bg-amber-500/5">
+              <p className="text-xs text-amber-400 uppercase tracking-wide mb-3 flex items-center gap-1.5">
+                <span>🔍</span> Why Streaks Break — Your Patterns
+              </p>
+              <div className="space-y-3">
+                {insights.map((ins, i) => (
+                  <div key={i} className="flex gap-2">
+                    <span className="text-base">{ins.emoji}</span>
+                    <p className="text-xs text-gray-300">{ins.insight}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
+
         {/* Weekly completion */}
         {scores?.weeklyCompletion && (
           <div className="lifeos-card mb-6">

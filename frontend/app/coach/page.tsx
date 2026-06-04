@@ -48,21 +48,66 @@ export default function CoachPage() {
     const msg = text || input.trim();
     if (!msg || loading) return;
     setInput('');
-    setMessages((prev) => [...prev, { role: 'user', content: msg, timestamp: new Date() }]);
+
+    const userMsg: Message = { role: 'user', content: msg, timestamp: new Date() };
+    // Build history excluding the initial welcome message
+    const history = messages.slice(1).map(m => ({ role: m.role, content: m.content }));
+
+    setMessages(prev => [...prev, userMsg]);
     setLoading(true);
+
+    // Add empty assistant message to stream into
+    const assistantMsg: Message = { role: 'assistant', content: '', timestamp: new Date() };
+    setMessages(prev => [...prev, assistantMsg]);
+
     try {
-      const data = await api.chat(msg);
-      setMessages((prev) => [
-        ...prev,
-        { role: 'assistant', content: data.response || data, timestamp: new Date() },
-      ]);
+      const token = await api.getToken();
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+      const res = await fetch(`${apiUrl}/ai/chat/stream`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ message: msg, history }),
+      });
+
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+      const reader = res.body!.getReader();
+      const decoder = new TextDecoder();
+      let fullText = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const lines = decoder.decode(value).split('\n');
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          const data = line.slice(6);
+          if (data === '[DONE]') break;
+          try {
+            const parsed = JSON.parse(data);
+            if (parsed.error) throw new Error(parsed.error);
+            fullText += parsed.text || '';
+            setMessages(prev => {
+              const updated = [...prev];
+              updated[updated.length - 1] = { ...assistantMsg, content: fullText };
+              return updated;
+            });
+          } catch (parseErr: any) {
+            // Re-throw server-sent errors so the outer catch can show them to the user.
+            // Ignore JSON parse errors from partial/malformed SSE frames.
+            if (parseErr.message && !parseErr.message.startsWith('JSON')) throw parseErr;
+          }
+        }
+      }
     } catch (e: any) {
-      setMessages((prev) => [
-        ...prev,
-        { role: 'assistant', content: `Sorry, something went wrong: ${e.message}`, timestamp: new Date() },
-      ]);
+      setMessages(prev => {
+        const updated = [...prev];
+        updated[updated.length - 1] = { ...assistantMsg, content: `Sorry, something went wrong: ${e.message}` };
+        return updated;
+      });
     } finally {
       setLoading(false);
+      inputRef.current?.focus();
     }
   }
 
@@ -170,8 +215,8 @@ export default function CoachPage() {
             ))}
           </AnimatePresence>
 
-          {/* Typing indicator */}
-          {loading && (
+          {/* Streaming cursor on last assistant message */}
+          {loading && messages[messages.length - 1]?.role === 'assistant' && messages[messages.length - 1]?.content === '' && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex gap-2.5">
               <div className="w-7 h-7 rounded-full bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center flex-shrink-0">
                 <Bot size={14} className="text-indigo-400" />

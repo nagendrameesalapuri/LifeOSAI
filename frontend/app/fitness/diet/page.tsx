@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useApi } from '@/lib/hooks/useApi';
 import { cache } from '@/lib/cache';
 import { Sidebar } from '@/components/layout/Sidebar';
-import { Trash2, Sparkles, Loader2, Send } from 'lucide-react';
+import { Trash2, Sparkles, Loader2, Send, Camera, History, Barcode } from 'lucide-react';
 
 const EXAMPLES = [
   'Rice 300g with dal 1 cup',
@@ -37,6 +37,11 @@ export default function DietPage() {
   const [planLoading, setPlanLoading] = useState(false);
   const [input, setInput] = useState('');
   const [parsing, setParsing] = useState(false);
+  const [photoLoading, setPhotoLoading] = useState(false);
+  const [barcodeInput, setBarcodeInput] = useState('');
+  const [barcodeLoading, setBarcodeLoading] = useState(false);
+  const [showBarcodeInput, setShowBarcodeInput] = useState(false);
+  const [frequentMeals, setFrequentMeals] = useState<{ name: string; calories: number; protein: number; count: number }[]>([]);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -47,6 +52,8 @@ export default function DietPage() {
       setLoadingToday(false);
     }
     // Refresh in background
+    api.getFrequentMeals().then(setFrequentMeals).catch(() => {});
+
     Promise.all([
       api.getTodayDiet().catch(() => null),
       api.getTodayWater().catch(() => null),
@@ -97,6 +104,38 @@ export default function DietPage() {
     } finally {
       setParsing(false);
     }
+  }
+
+  async function addMealFromPhoto(file: File) {
+    setPhotoLoading(true);
+    setError('');
+    try {
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => resolve((e.target!.result as string).split(',')[1]);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      const data = await api.parseMealFromPhoto(base64, file.type || 'image/jpeg');
+      if (!data?.items?.length) { setError('Could not identify food. Try a clearer photo or type instead.'); return; }
+      setMeals(p => [...p, ...data.items]);
+    } catch { setError('Photo analysis failed. Try typing instead.'); } finally { setPhotoLoading(false); }
+  }
+
+  function addFrequentMeal(m: any) {
+    setMeals(p => [...p, { name: m.name, quantity: '', calories: m.calories, protein: m.protein, carbs: m.carbs || 0, fat: m.fat || 0, fiber: 0 }]);
+  }
+
+  async function lookupBarcode() {
+    if (!barcodeInput.trim() || barcodeLoading) return;
+    setBarcodeLoading(true);
+    setError('');
+    try {
+      const data = await api.getBarcodeNutrition(barcodeInput.trim());
+      setMeals(p => [...p, { name: data.name, quantity: data.quantity, calories: data.calories, protein: data.protein, carbs: data.carbs, fat: data.fat, fiber: data.fiber || 0 }]);
+      setBarcodeInput('');
+      setShowBarcodeInput(false);
+    } catch { setError('Barcode not found. Try a different code or type the meal instead.'); } finally { setBarcodeLoading(false); }
   }
 
   function removeMeal(i: number) { setMeals(p => p.filter((_, idx) => idx !== i)); }
@@ -172,8 +211,66 @@ export default function DietPage() {
 
             {/* Smart input */}
             <div className="lifeos-card">
-              <p className="text-sm font-semibold text-gray-300 mb-1">What did you eat?</p>
-              <p className="text-xs text-gray-600 mb-3">Describe your meal — AI calculates nutrition automatically</p>
+              <div className="flex items-center justify-between mb-1">
+                <p className="text-sm font-semibold text-gray-300">What did you eat?</p>
+                <div className="flex gap-1.5">
+                  <button
+                    onClick={() => { setShowBarcodeInput(v => !v); setError(''); }}
+                    className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition-all
+                      ${showBarcodeInput ? 'border-cyan-500/40 bg-cyan-500/10 text-cyan-300' : 'border-[#2a2a4a] bg-[#1a1a2e] text-gray-500 hover:text-gray-300 hover:border-cyan-500/30'}`}>
+                    <Barcode size={12} /> Barcode
+                  </button>
+                  <label className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border cursor-pointer transition-all
+                    ${photoLoading ? 'border-indigo-500/40 bg-indigo-500/10 text-indigo-300' : 'border-[#2a2a4a] bg-[#1a1a2e] text-gray-500 hover:text-gray-300 hover:border-indigo-500/30'}`}>
+                    {photoLoading ? <Loader2 size={12} className="animate-spin" /> : <Camera size={12} />}
+                    {photoLoading ? 'Analysing...' : 'Photo'}
+                    <input type="file" accept="image/*" className="hidden" disabled={photoLoading}
+                      onChange={(e) => e.target.files?.[0] && addMealFromPhoto(e.target.files[0])} />
+                  </label>
+                </div>
+              </div>
+              <p className="text-xs text-gray-600 mb-3">Type, snap a photo, or scan a barcode — AI calculates nutrition</p>
+
+              {/* Barcode input panel */}
+              {showBarcodeInput && (
+                <div className="mb-3 flex gap-2">
+                  <input
+                    className="lifeos-input flex-1 text-sm"
+                    placeholder="Enter barcode number (EAN-13, UPC-A)"
+                    value={barcodeInput}
+                    onChange={(e) => setBarcodeInput(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && lookupBarcode()}
+                    inputMode="numeric"
+                    autoFocus
+                  />
+                  <button
+                    onClick={lookupBarcode}
+                    disabled={barcodeLoading || !barcodeInput.trim()}
+                    className="lifeos-btn px-4 flex items-center gap-2 min-w-[80px] justify-center"
+                  >
+                    {barcodeLoading ? <Loader2 size={13} className="animate-spin" /> : <Barcode size={13} />}
+                    {barcodeLoading ? '...' : 'Lookup'}
+                  </button>
+                </div>
+              )}
+
+              {/* Quick-tap from history */}
+              {frequentMeals.length > 0 && (
+                <div className="mb-3">
+                  <p className="text-[10px] text-gray-600 uppercase tracking-wide flex items-center gap-1 mb-1.5">
+                    <History size={9} /> Your usual meals
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {frequentMeals.map((m) => (
+                      <button key={m.name} onClick={() => addFrequentMeal(m)}
+                        className="text-xs bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 text-emerald-400 rounded-full px-2.5 py-1 transition-all flex items-center gap-1.5">
+                        <span>{m.name}</span>
+                        <span className="text-[9px] text-emerald-600">{m.calories}kcal</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               <div className="flex gap-2">
                 <input
