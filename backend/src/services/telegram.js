@@ -70,7 +70,9 @@ async function registerWebhook() {
   const backendUrl = process.env.BACKEND_URL;
   if (!bot || !backendUrl) throw new Error('bot or BACKEND_URL not set');
   const webhookUrl = `${backendUrl.replace(/\/$/, '')}/api/telegram/webhook`;
-  await bot.setWebhook(webhookUrl);
+  // node-telegram-bot-api uses setWebHook (capital H) not setWebhook
+  const fn = bot.setWebHook || bot.setWebhook;
+  await fn.call(bot, webhookUrl);
   console.log(`Telegram webhook registered → ${webhookUrl}`);
 }
 
