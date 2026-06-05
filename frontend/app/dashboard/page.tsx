@@ -339,7 +339,9 @@ export default function DashboardPage() {
           // 0% if no progress (new user or start === current), 100% if at/past goal
           const pct = totalDiff === 0 ? 0 : Math.min(100, Math.round((progressMade / totalDiff) * 100));
           const diff = Math.abs(target - current).toFixed(1);
-          const milestone = current >= target;
+          const isGaining = target > start;
+          // For bulking: milestone when current reaches target. For cutting: when current drops to target.
+          const milestone = isGaining ? current >= target : current <= target;
           return (
             <motion.div
               initial={{ opacity: 0, y: -6 }}

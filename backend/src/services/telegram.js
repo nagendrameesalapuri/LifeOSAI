@@ -340,13 +340,14 @@ async function handleProfile(msg) {
   const langGoals = (u.languageGoals || []).map(l => l.charAt(0).toUpperCase() + l.slice(1)).join(' + ') || 'None';
   const learningPath = (careerMem.learningPath || []).join(', ') || 'Not specified';
   const commChallenges = (profileMem.communicationChallenges || learnMem.english?.challenges || []).join(', ') || 'Not specified';
-  const weightDiff = ((u.targetWeightKg || 70) - (u.weightKg || 62)).toFixed(1);
+  const rawDiff = (u.targetWeightKg || 70) - (u.weightKg || 62);
+  const weightDiff = `${Math.abs(rawDiff).toFixed(1)}kg to ${rawDiff > 0 ? 'gain' : rawDiff < 0 ? 'lose' : 'maintain'}`;
 
   const text = `👤 *${u.name || 'Your Profile'}*
 _${u.profession || 'Engineer'} | ${profileMem.location || 'Bangalore'}_
 
 *🏋️ Body & Fitness*
-├ Weight: ${u.weightKg || '?'}kg → Target: ${u.targetWeightKg || '?'}kg (${weightDiff}kg to go)
+├ Weight: ${u.weightKg || '?'}kg → Target: ${u.targetWeightKg || '?'}kg (${weightDiff})
 ├ Goal: ${goalMap[u.primaryGoal] || 'Lean Bulk 💪'}
 ├ Gym: ${u.gymDaysPerWeek || 4}x/week | ${u.gymAccess || 'Commercial'} gym
 └ Level: ${u.fitnessLevel || 'Intermediate'}
