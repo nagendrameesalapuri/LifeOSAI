@@ -329,35 +329,45 @@ async function handleProfile(msg) {
     .filter(l => new Date(l.loggedAt) > new Date(Date.now() - 7 * 86400000))
     .reduce((a, l) => a + l.durationMin, 0);
 
-  const goalMap = { lean_bulk: 'Lean Bulk 📈', cut: 'Cut 📉', maintain: 'Maintain ⚖️' };
-  const careerGoalMap = { devops: 'DevOps/Cloud', data_engineering: 'Data Engineering', frontend: 'Frontend', backend: 'Backend', ai_ml: 'AI/ML', custom: u.careerGoalCustom || 'Custom' };
-  const langGoals = (u.languageGoals || []).join(', ').toUpperCase() || 'None';
+  // Load AI memory for rich profile details
+  const memories = await prisma.aIMemory.findMany({ where: { userId: u.id } }).catch(() => []);
+  const profileMem = memories.find(m => m.memoryType === 'USER_PROFILE')?.content || {};
+  const careerMem  = memories.find(m => m.memoryType === 'CAREER')?.content  || {};
+  const learnMem   = memories.find(m => m.memoryType === 'LEARNING')?.content || {};
+
+  const goalMap = { lean_bulk: 'Lean Bulk 💪', cut: 'Cut 🔥', maintain: 'Maintain ⚖️' };
+  const careerTarget = u.careerGoalCustom || ({ devops: 'DevOps/Cloud Engineering', data_engineering: 'Data Engineering', frontend: 'Frontend Engineering', backend: 'Backend Engineering', ai_ml: 'AI/ML Engineering' }[u.careerGoal] || 'Engineering');
+  const langGoals = (u.languageGoals || []).map(l => l.charAt(0).toUpperCase() + l.slice(1)).join(' + ') || 'None';
+  const learningPath = (careerMem.learningPath || []).join(', ') || 'Not specified';
+  const commChallenges = (profileMem.communicationChallenges || learnMem.english?.challenges || []).join(', ') || 'Not specified';
+  const weightDiff = ((u.targetWeightKg || 70) - (u.weightKg || 62)).toFixed(1);
 
   const text = `👤 *${u.name || 'Your Profile'}*
+_${u.profession || 'Engineer'} | ${profileMem.location || 'Bangalore'}_
 
-*🏋️ Fitness*
-├ Weight: ${u.weightKg || '?'}kg → Target: ${u.targetWeightKg || '?'}kg
-├ Goal: ${goalMap[u.primaryGoal] || u.primaryGoal || 'Lean Bulk'}
-├ Gym days/week: ${u.gymDaysPerWeek || 4}
-└ Level: ${u.fitnessLevel || 'intermediate'}
+*🏋️ Body & Fitness*
+├ Weight: ${u.weightKg || '?'}kg → Target: ${u.targetWeightKg || '?'}kg (${weightDiff}kg to go)
+├ Goal: ${goalMap[u.primaryGoal] || 'Lean Bulk 💪'}
+├ Gym: ${u.gymDaysPerWeek || 4}x/week | ${u.gymAccess || 'Commercial'} gym
+└ Level: ${u.fitnessLevel || 'Intermediate'}
 
-*💤 Sleep*
-├ 7-day avg: ${avgSleep} hrs
-└ Target: 8 hrs/night
+*💤 Sleep (last 7 days)*
+├ Avg: ${avgSleep} hrs
+└ Gym streak: ${gymStreak} days | Study streak: ${studyStreak} days
 
-*📚 Career*
-├ Goal: ${careerGoalMap[u.careerGoal] || 'DevOps/Cloud'}
-└ Study this week: ${Math.round(weekStudy / 60)} hrs ${weekStudy === 0 ? '⚠️ Not started' : '✅'}
+*💼 Career Transition*
+├ From: ${u.profession || 'QA Engineer'}
+├ To: ${careerTarget}
+├ Learning: ${learningPath}
+└ Study this week: ${Math.round(weekStudy / 60)} hrs ${weekStudy === 0 ? '⚠️' : '✅'}
 
-*🌐 Languages*
-└ Tracking: ${langGoals}
-
-*🔥 Current Streaks*
-├ Gym: ${gymStreak} days
-└ Study: ${studyStreak} days
+*🌐 Language Goals*
+├ Native: ${u.nativeLanguage ? u.nativeLanguage.charAt(0).toUpperCase() + u.nativeLanguage.slice(1) : 'Telugu'}
+├ Tracking: ${langGoals}
+└ English challenges: ${commChallenges}
 
 *🎯 Life Score*
-└ ${lifeScore ? `${lifeScore.overall}/100 (Fit:${lifeScore.fitness} Sleep:${lifeScore.sleep} Disc:${lifeScore.discipline} Career:${lifeScore.career})` : 'Not calculated yet — visit dashboard'}
+└ ${lifeScore ? `${lifeScore.overall}/100 — Fit:${lifeScore.fitness} Sleep:${lifeScore.sleep} Discipline:${lifeScore.discipline} Career:${lifeScore.career}` : 'Not calculated yet — visit dashboard'}
 
 _Joined: ${new Date(u.createdAt).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })}_`;
 

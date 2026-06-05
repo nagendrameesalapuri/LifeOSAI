@@ -66,6 +66,9 @@ async function getContextualMemory(userId) {
   const langGoals = user?.languageGoals || [];
   const nativeLang = user?.nativeLanguage || 'unknown';
 
+  const profileMem = memories.find(m => m.memoryType === 'USER_PROFILE');
+  const profileData = profileMem?.content || {};
+
   const gymDays7 = recentHabits.slice(0, 7).filter(h => h.gym).length;
   const gymDays14 = recentHabits.filter(h => h.gym).length;
   const avgSleep7 = recentSleep.slice(0, 7).length
@@ -108,10 +111,14 @@ async function getContextualMemory(userId) {
   const englishData = englishMem?.content || {};
   const careerData = careerMem?.content || {};
 
+  const commChallenges = profileData.communicationChallenges || englishData.challenges || [];
   const languageSection = langGoals.length > 0 ? `
 LANGUAGE LEARNING (native: ${nativeLang}):
-${langGoals.includes('english') ? `- English: mistakes: ${(englishData.commonMistakes || []).slice(0, 3).join(', ') || 'none yet'} | grammar score trend: ${(englishData.grammarScoreTrend || []).slice(-3).join(' → ') || 'not assessed'} | corrections: ${englishData.totalCorrections || 0}` : ''}
-${langGoals.includes('kannada') ? `- Kannada: learning in progress` : ''}` : `
+${langGoals.includes('english') ? `- English goal: Professional fluency and confidence
+  Challenges: ${commChallenges.length ? commChallenges.join(', ') : 'building confidence'}
+  Progress: corrections done: ${englishData.totalCorrections || 0} | grammar trend: ${(englishData.grammarScoreTrend || []).slice(-3).join(' → ') || 'not assessed'}
+  Recent mistakes: ${(englishData.commonMistakes || []).slice(0, 3).join(', ') || 'none logged'}` : ''}
+${langGoals.includes('kannada') ? `- Kannada goal: Conversational for daily life and workplace` : ''}` : `
 LANGUAGE LEARNING: not tracking any language goals`;
 
   const context = `
@@ -138,8 +145,9 @@ DETECTED PATTERNS:
 ${languageSection}
 
 CAREER:
-- Goal: ${careerGoalLabel}
-- Current topic: ${careerData.currentTopic || 'not started'}
+- Transition: ${user?.profession || 'Engineer'} → ${careerGoalLabel}
+- Skills being learned: ${(careerData.learningPath || []).join(', ') || 'not specified'}
+- Current topic: ${careerData.currentTopic || recentStudy[0]?.topic || 'not started'}
 - Topics completed: ${(careerData.completedTopics || []).join(', ') || 'none yet'}
 - Total study hours: ${careerData.totalHours || 0}hrs
 - Last study session: ${recentStudy[0] ? `${recentStudy[0].topic} (${recentStudy[0].durationMin} min)` : 'none recent'}
