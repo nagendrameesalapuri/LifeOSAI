@@ -153,6 +153,8 @@ export default function OnboardingPage() {
     motivationNote: '',
   });
   const [saving, setSaving] = useState(false);
+  const [generatingPlan, setGeneratingPlan] = useState(false);
+  const [plan, setPlan] = useState<any>(null);
   const [error, setError] = useState('');
 
   const currentStep = STEPS[step];
@@ -191,9 +193,21 @@ export default function OnboardingPage() {
       };
 
       await api.updateProfile(profileData);
-      // Auto-calculate TDEE
-      await api.getTDEE().catch(() => {});
+
+      // Move to complete step first (shows loading)
       setStep(s => s + 1);
+      setGeneratingPlan(true);
+
+      // Generate AI plan — calculates all targets and stores in DB
+      try {
+        const generatedPlan = await api.generatePlan();
+        setPlan(generatedPlan);
+      } catch {
+        // Fallback: use TDEE formula values
+        await api.getTDEE().catch(() => {});
+      } finally {
+        setGeneratingPlan(false);
+      }
     } catch (e) {
       setError('Failed to save. Please try again.');
     } finally {
@@ -308,34 +322,70 @@ export default function OnboardingPage() {
 
             {/* COMPLETE STEP */}
             {currentStep.type === 'complete' && (
-              <div className="space-y-4 text-center">
-                <div className="lifeos-card-glow py-6">
-                  <p className="text-3xl font-bold gradient-text mb-2">Your Plan is Ready!</p>
-                  <p className="text-sm text-gray-400">LIFEOS AI has calculated your personalized targets</p>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  {[
-                    { label: 'Daily Calories', value: 'Calculated based on TDEE', icon: '🔥' },
-                    { label: 'Daily Protein', value: '2.2g × bodyweight', icon: '💪' },
-                    { label: 'Workout Split', value: `${data.gymDaysPerWeek}-day program`, icon: '🏋️' },
-                    { label: 'AI Learning', value: 'English + Kannada daily', icon: '🧠' },
-                  ].map(({ label, value, icon }) => (
-                    <div key={label} className="lifeos-card text-left">
-                      <p className="text-lg mb-1">{icon}</p>
-                      <p className="text-xs text-gray-500">{label}</p>
-                      <p className="text-sm font-medium text-white">{value}</p>
+              <div className="space-y-4">
+                {generatingPlan ? (
+                  <div className="text-center py-10">
+                    <div className="w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+                    <p className="text-lg font-semibold text-white mb-2">AI is generating your plan...</p>
+                    <p className="text-sm text-gray-400">Calculating your exact calories, protein, carbs, fat and water targets</p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="lifeos-card-glow py-5 text-center">
+                      <p className="text-2xl font-bold gradient-text mb-1">Your 90-Day Plan is Ready! 🎉</p>
+                      {plan?.summary && <p className="text-xs text-gray-400 mt-2 px-2">{plan.summary}</p>}
                     </div>
-                  ))}
-                </div>
 
-                <button
-                  onClick={() => router.push('/dashboard')}
-                  className="lifeos-btn w-full py-4 text-base font-semibold flex items-center justify-center gap-2"
-                >
-                  <Zap size={18} />
-                  Start My 90-Day Journey
-                </button>
+                    {/* Daily Nutrition Targets — all from DB */}
+                    <div>
+                      <p className="text-xs text-gray-500 uppercase tracking-wide mb-2">Daily Nutrition Targets</p>
+                      <div className="grid grid-cols-2 gap-2">
+                        {[
+                          { label: 'Calories',  value: plan ? `${plan.dailyCalories} kcal` : '—', icon: '🔥', color: '#f59e0b' },
+                          { label: 'Protein',   value: plan ? `${plan.dailyProtein}g` : '—',       icon: '💪', color: '#10b981' },
+                          { label: 'Carbs',     value: plan ? `${plan.dailyCarbs}g` : '—',         icon: '🌾', color: '#06b6d4' },
+                          { label: 'Fat',       value: plan ? `${plan.dailyFat}g` : '—',           icon: '🥑', color: '#8b5cf6' },
+                          { label: 'Water',     value: plan ? `${plan.dailyWater}L` : '—',         icon: '💧', color: '#22d3ee' },
+                          { label: 'Meals/day', value: plan ? `${plan.mealsPerDay} meals` : '—',   icon: '🍽️', color: '#f97316' },
+                        ].map(({ label, value, icon, color }) => (
+                          <div key={label} className="lifeos-card flex items-center gap-3 py-3">
+                            <span className="text-xl">{icon}</span>
+                            <div>
+                              <p className="text-[10px] text-gray-500">{label}</p>
+                              <p className="text-sm font-bold text-white">{value}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Workout + Learning */}
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="lifeos-card py-3">
+                        <p className="text-xl mb-1">🏋️</p>
+                        <p className="text-[10px] text-gray-500">Workout Program</p>
+                        <p className="text-sm font-bold text-white">{data.gymDaysPerWeek}-day split</p>
+                      </div>
+                      <div className="lifeos-card py-3">
+                        <p className="text-xl mb-1">🧠</p>
+                        <p className="text-[10px] text-gray-500">AI Learning</p>
+                        <p className="text-sm font-bold text-white">English + Kannada</p>
+                      </div>
+                    </div>
+
+                    <p className="text-[10px] text-gray-600 text-center">All targets stored in your profile and used by every AI feature</p>
+                  </>
+                )}
+
+                {!generatingPlan && (
+                  <button
+                    onClick={() => router.push('/dashboard')}
+                    className="lifeos-btn w-full py-4 text-base font-semibold flex items-center justify-center gap-2"
+                  >
+                    <Zap size={18} />
+                    Start My 90-Day Journey
+                  </button>
+                )}
               </div>
             )}
 

@@ -25,6 +25,9 @@ model User {
   gymDaysPerWeek     Int      @default(4)
   dailyProteinTarget Float    @default(140)
   dailyCalorieTarget Int      @default(2800)
+  dailyCarbsTarget   Int      @default(290)
+  dailyFatTarget     Int      @default(80)
+  dailyWaterTarget   Float    @default(3.5)
   // Equipment & experience
   gymAccess          String   @default("commercial") // commercial/home/none
   fitnessLevel       String   @default("intermediate") // beginner/intermediate/advanced

@@ -1,6 +1,5 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useApi } from '@/lib/hooks/useApi';
 import { cache } from '@/lib/cache';
@@ -169,43 +168,21 @@ const ALL_SCORE_CARDS = [
 /* ══════════════════════════════════════════════════════════════════════ */
 export default function DashboardPage() {
   const api = useApi();
-  const router = useRouter();
   const [dashboard, setDashboard] = useState<any>(null);
   const [breakdown, setBreakdown] = useState<any>(null);
   const [insights, setInsights] = useState<string>('');
   const [plan, setPlan] = useState<string>('');
   const [nutrition, setNutrition] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [onboardingChecked, setOnboardingChecked] = useState(false);
   const [planLoading, setPlanLoading] = useState(false);
   const [expandedScore, setExpandedScore] = useState<string | null>(null);
   const [correlations, setCorrelations] = useState<any>(null);
   const [checkinDone, setCheckinDone] = useState(false);
+  const [adaptedPlan, setAdaptedPlan] = useState<{ plan: string; weakAreas: string[]; thisOverall: number; lastOverall: number; seen: boolean } | null>(null);
 
   useEffect(() => {
-    // Check onboarding status FIRST via lightweight profile call.
-    // This avoids the flash of empty dashboard before redirect.
-    api.getProfile().then((profile: any) => {
-      if (profile?.onboardingComplete === false) {
-        router.replace('/onboarding');
-      } else {
-        setOnboardingChecked(true);
-        loadDashboard();
-      }
-    }).catch(() => {
-      setOnboardingChecked(true);
-      loadDashboard();
-    });
+    loadDashboard();
   }, []);
-
-  // Show nothing until onboarding check resolves — prevents flash
-  if (!onboardingChecked) {
-    return (
-      <div className="flex min-h-screen bg-[#0a0a0f] items-center justify-center">
-        <div className="w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
-  }
 
   async function loadDashboard() {
     const DASHBOARD_TTL = 5 * 60 * 1000; // 5 min
@@ -264,6 +241,33 @@ export default function DashboardPage() {
     }
 
     api.getMorningCheckin().then((d) => setCheckinDone(!!d?.todayCheckin)).catch(() => {});
+
+    // Auto-load today's plan (default TTL = midnight)
+    const cachedPlan = cache.get('dashboard_plan');
+    if (cachedPlan) {
+      setPlan(cachedPlan);
+    } else {
+      setPlanLoading(true);
+      api.getDailyPlan().then((data) => {
+        const text = data?.plan || '';
+        setPlan(text);
+        if (text) cache.set('dashboard_plan', text);
+      }).catch(() => {}).finally(() => setPlanLoading(false));
+    }
+
+    // Check weekly progress — generates an adapted plan if scores haven't improved
+    api.checkWeeklyProgress().then((result: any) => {
+      if (result?.status === 'stagnant' && result?.adaptedPlan && !result?.seen) {
+        setAdaptedPlan({
+          plan: result.adaptedPlan,
+          weakAreas: result.weakAreas || [],
+          thisOverall: result.thisOverall,
+          lastOverall: result.lastOverall,
+          seen: false,
+        });
+      }
+    }).catch(() => {});
+
     setLoading(false);
   }
 
@@ -271,7 +275,9 @@ export default function DashboardPage() {
     setPlanLoading(true);
     try {
       const data = await api.getDailyPlan();
-      setPlan(data?.plan || '');
+      const text = data?.plan || '';
+      setPlan(text);
+      if (text) cache.set('dashboard_plan', text);
     } catch (e) { console.error(e); }
     finally { setPlanLoading(false); }
   }
@@ -693,6 +699,40 @@ export default function DashboardPage() {
               </motion.div>
             )}
 
+            {/* ── ADAPTED PLAN BANNER (shown when weekly progress is stagnant) ── */}
+            {adaptedPlan && !adaptedPlan.seen && (
+              <motion.div
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="lifeos-card border-amber-500/30 bg-amber-500/5"
+              >
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-lg bg-amber-500/15 flex items-center justify-center text-base">
+                      🔄
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-amber-300">Your Plan Has Been Updated</p>
+                      <p className="text-[10px] text-gray-500">
+                        Score: {adaptedPlan.lastOverall}→{adaptedPlan.thisOverall} this week
+                        {adaptedPlan.weakAreas.length > 0 && ` · Weak: ${adaptedPlan.weakAreas.join(', ')}`}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={async () => {
+                      setAdaptedPlan((prev) => prev ? { ...prev, seen: true } : null);
+                      try { await api.dismissPlanUpdate(); } catch {}
+                    }}
+                    className="text-[10px] text-gray-500 hover:text-gray-300 transition-colors px-2 py-1 rounded bg-white/5"
+                  >
+                    Got it ✓
+                  </button>
+                </div>
+                <p className="text-xs text-gray-300 leading-relaxed whitespace-pre-line">{adaptedPlan.plan}</p>
+              </motion.div>
+            )}
+
             {/* ── DAILY PLAN ──────────────────────────────────── */}
             <div className="lifeos-card">
               <div className="flex items-center justify-between mb-3">
@@ -703,18 +743,27 @@ export default function DashboardPage() {
                   <p className="text-sm font-semibold text-white">Today's Plan</p>
                 </div>
                 <button
-                  onClick={loadDailyPlan}
+                  onClick={() => {
+                    cache.delete('dashboard_plan');
+                    loadDailyPlan();
+                  }}
                   disabled={planLoading}
-                  className="lifeos-btn text-xs py-1.5 px-3"
+                  className="lifeos-btn-ghost text-xs py-1.5 px-3 flex items-center gap-1"
                 >
-                  {planLoading ? 'Generating…' : 'Generate'}
+                  <RefreshCw size={11} className={planLoading ? 'animate-spin' : ''} />
+                  {planLoading ? 'Generating…' : 'Refresh'}
                 </button>
               </div>
-              {plan ? (
+              {planLoading ? (
+                <div className="flex items-center gap-2 py-2">
+                  <div className="w-4 h-4 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin" />
+                  <p className="text-xs text-gray-500">Generating your personalised plan…</p>
+                </div>
+              ) : plan ? (
                 <p className="text-xs text-gray-400 leading-relaxed whitespace-pre-line">{plan}</p>
               ) : (
                 <p className="text-xs text-gray-600 italic">
-                  Tap Generate to get your personalised meal timing and workout plan for today.
+                  Your plan will appear here automatically each morning.
                 </p>
               )}
             </div>

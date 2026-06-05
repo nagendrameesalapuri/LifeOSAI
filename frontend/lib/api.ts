@@ -30,6 +30,7 @@ export async function apiCall(
 export const api = {
   // User
   getProfile: (token: string) => apiCall('/users/me', {}, token),
+  generatePlan: (token: string) => apiCall('/users/generate-plan', { method: 'POST' }, token),
   updateProfile: (token: string, data: any) =>
     apiCall('/users/me', { method: 'PUT', body: JSON.stringify(data) }, token),
   getUserStats: (token: string) => apiCall('/users/me/stats', {}, token),
@@ -161,4 +162,7 @@ export const api = {
     apiCall('/reports/weekly', { method: 'POST' }, token),
   getReports: (token: string) => apiCall('/reports/all', {}, token),
   getLatestReport: (token: string) => apiCall('/reports/latest', {}, token),
+  checkWeeklyProgress: (token: string) => apiCall('/reports/check-progress', {}, token),
+  dismissPlanUpdate: (token: string) =>
+    apiCall('/reports/plan-update/dismiss', { method: 'POST' }, token),
 };

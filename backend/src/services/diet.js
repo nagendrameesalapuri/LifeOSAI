@@ -24,8 +24,16 @@ async function updateUserTargets(userId) {
     const tdee = calculateTDEE(user.weightKg, user.heightCm, user.age, activityLevel);
     const calorieTarget = calculateCalorieTarget(tdee, primaryGoal);
     const proteinTarget = calculateProteinTarget(user.weightKg);
-    await prisma.user.update({ where: { id: userId }, data: { tdeeKcal: tdee, dailyCalorieTarget: calorieTarget, dailyProteinTarget: proteinTarget } }).catch(() => {});
-    return { tdee, calorieTarget, proteinTarget };
+    const proteinKcal = proteinTarget * 4;
+    const remainingKcal = Math.max(0, calorieTarget - proteinKcal);
+    const carbsTarget = Math.round(remainingKcal * 0.55 / 4);
+    const fatTarget = Math.round(remainingKcal * 0.45 / 9);
+    const waterTarget = Math.round((user.weightKg * 0.035 + (user.gymDaysPerWeek || 4) * 0.07) * 10) / 10;
+    await prisma.user.update({
+      where: { id: userId },
+      data: { tdeeKcal: tdee, dailyCalorieTarget: calorieTarget, dailyProteinTarget: proteinTarget, dailyCarbsTarget: carbsTarget, dailyFatTarget: fatTarget, dailyWaterTarget: waterTarget },
+    }).catch(() => {});
+    return { tdee, calorieTarget, proteinTarget, carbsTarget, fatTarget, waterTarget };
   } catch { return { tdee: 2600, calorieTarget: 2800, proteinTarget: 140 }; }
 }
 
@@ -71,7 +79,16 @@ async function getTodayDiet(userId) {
     prisma.dietLog.findFirst({ where: { userId, loggedAt: { gte: today, lt: tomorrow } }, orderBy: { loggedAt: 'desc' } }),
     prisma.user.findUnique({ where: { id: userId } }),
   ]);
-  return { log, targets: { calories: user?.dailyCalorieTarget || 2800, protein: user?.dailyProteinTarget || 140, water: 4 } };
+  return {
+    log,
+    targets: {
+      calories: user?.dailyCalorieTarget || 2800,
+      protein:  user?.dailyProteinTarget || 140,
+      carbs:    user?.dailyCarbsTarget   || 290,
+      fat:      user?.dailyFatTarget     || 80,
+      water:    user?.dailyWaterTarget   || 3.5,
+    },
+  };
 }
 
 async function getDietHistory(userId) {

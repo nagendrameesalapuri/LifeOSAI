@@ -36,6 +36,7 @@ export function useApi() {
   return {
     getToken,
     getProfile: () => withToken(api.getProfile),
+    generatePlan: () => withToken(api.generatePlan),
     updateProfile: (data: any) => withToken((t) => api.updateProfile(t, data)),
     getUserStats: () => withToken(api.getUserStats),
 
@@ -129,5 +130,7 @@ export function useApi() {
     generateWeeklyReport: () => withToken(api.generateWeeklyReport),
     getReports: () => withToken(api.getReports),
     getLatestReport: () => withToken(api.getLatestReport),
+    checkWeeklyProgress: () => withToken(api.checkWeeklyProgress),
+    dismissPlanUpdate: () => withToken(api.dismissPlanUpdate),
   };
 }
