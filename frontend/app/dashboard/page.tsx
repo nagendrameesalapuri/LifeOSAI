@@ -328,17 +328,18 @@ export default function DashboardPage() {
           </button>
         </motion.div>
 
-        {/* Weight goal progress bar */}
+        {/* Weight goal progress bar — uses real starting weight from first weight log */}
         {!loading && dashboard?.user?.weightKg && dashboard?.user?.targetWeightKg && (() => {
           const current = dashboard.user.weightKg;
           const target = dashboard.user.targetWeightKg;
-          const start = Math.min(current, target) - 2;
-          const total = Math.abs(target - start);
-          const gained = Math.abs(current - start);
-          const pct = Math.min(100, Math.round((gained / total) * 100));
-          const isGaining = target > current;
+          // Use oldest weight log as start; fall back to current weight (0% for new users)
+          const start = dashboard.user.startingWeightKg ?? current;
+          const totalDiff = Math.abs(target - start);
+          const progressMade = Math.abs(current - start);
+          // 0% if no progress (new user or start === current), 100% if at/past goal
+          const pct = totalDiff === 0 ? 0 : Math.min(100, Math.round((progressMade / totalDiff) * 100));
           const diff = Math.abs(target - current).toFixed(1);
-          const milestone = pct >= 100;
+          const milestone = current >= target;
           return (
             <motion.div
               initial={{ opacity: 0, y: -6 }}
@@ -356,7 +357,7 @@ export default function DashboardPage() {
                 </span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-[10px] text-gray-600 w-10 text-right">{start.toFixed(0)}kg</span>
+                <span className="text-[10px] text-gray-600 w-10 text-right">{start}kg</span>
                 <div className="flex-1 h-2 bg-white/5 rounded-full overflow-hidden">
                   <div
                     className={`h-full rounded-full transition-all duration-700 ${milestone ? 'bg-emerald-500' : 'bg-indigo-500'}`}

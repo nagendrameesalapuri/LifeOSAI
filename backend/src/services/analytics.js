@@ -78,7 +78,7 @@ async function getKannadaScoreData(userId) {
 }
 
 async function getDashboard(userId) {
-  const [user, habitScores, sleepData, fitnessData, studyData, englishData, kannadaData] = await Promise.all([
+  const [user, habitScores, sleepData, fitnessData, studyData, englishData, kannadaData, oldestWeightLog] = await Promise.all([
     prisma.user.findUnique({ where: { id: userId } }).catch(() => null),
     getHabitScoreData(userId),
     getSleepScoreData(userId),
@@ -86,6 +86,7 @@ async function getDashboard(userId) {
     getStudyScoreData(userId),
     getEnglishScoreData(userId),
     getKannadaScoreData(userId),
+    prisma.weightLog.findFirst({ where: { userId }, orderBy: { loggedAt: 'asc' } }).catch(() => null),
   ]);
 
   const languageGoals = user?.languageGoals || [];
@@ -100,7 +101,7 @@ async function getDashboard(userId) {
   await prisma.lifeScore.create({ data: { userId, date: new Date(), overall, fitness: scores.fitness, sleep: scores.sleep, discipline: scores.discipline, career: scores.career, english: scores.english ?? 0, kannada: scores.kannada ?? 0 } }).catch(() => {});
 
   return {
-    user: { name: user?.name, weightKg: user?.weightKg, targetWeightKg: user?.targetWeightKg, tdeeKcal: user?.tdeeKcal ?? null, dailyCalorieTarget: user?.dailyCalorieTarget ?? 2800, dailyProteinTarget: user?.dailyProteinTarget ?? 140, languageGoals },
+    user: { name: user?.name, weightKg: user?.weightKg, targetWeightKg: user?.targetWeightKg, startingWeightKg: oldestWeightLog?.weightKg ?? null, tdeeKcal: user?.tdeeKcal ?? null, dailyCalorieTarget: user?.dailyCalorieTarget ?? 2800, dailyProteinTarget: user?.dailyProteinTarget ?? 140, languageGoals, onboardingComplete: user?.onboardingComplete },
     scores: { ...scores, overall }, weights,
     details: { fitness: fitnessData, sleep: sleepData, habits: habitScores, study: studyData, english: englishData, kannada: kannadaData },
   };

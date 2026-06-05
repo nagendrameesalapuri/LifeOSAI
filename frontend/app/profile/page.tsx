@@ -163,7 +163,7 @@ export default function ProfilePage() {
     return (
       <div className="flex min-h-screen bg-[#0a0a0f]">
         <Sidebar />
-        <main className="ml-56 flex-1 flex items-center justify-center">
+        <main className="md:ml-56 flex-1 flex items-center justify-center">
           <Loader2 className="w-8 h-8 text-indigo-400 animate-spin" />
         </main>
       </div>
@@ -179,7 +179,7 @@ export default function ProfilePage() {
   return (
     <div className="flex min-h-screen bg-[#0a0a0f]">
       <Sidebar />
-      <main className="ml-56 flex-1 p-6 max-w-4xl">
+      <main className="md:ml-56 flex-1 p-4 md:p-6 max-w-4xl pb-24 md:pb-6">
 
         {/* ── Header ─────────────────────────────────────────────── */}
         <div className="flex items-start justify-between mb-8">
@@ -240,7 +240,7 @@ export default function ProfilePage() {
 
         {/* ── Stats strip ─────────────────────────────────────────── */}
         {stats && (
-          <div className="grid grid-cols-4 gap-3 mb-8">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
             <StatCard icon="💪" label="Workouts logged" value={stats.workoutCount} color="#f97316" />
             <StatCard icon="📚" label="Study hours" value={`${stats.totalStudyHours}h`} sub={`${stats.studyTopicsCount} topics`} color="#10b981" />
             <StatCard icon="🗣️" label="English corrections" value={stats.englishCorrections} color="#6366f1" />
@@ -252,7 +252,7 @@ export default function ProfilePage() {
           </div>
         )}
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
           {/* ── Body & Fitness ──────────────────────────────────────── */}
           <Section title="Body & Fitness" icon={Dumbbell} color="#f97316">
