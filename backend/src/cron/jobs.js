@@ -54,7 +54,8 @@ async function buildPatternNudges(user) {
   // Pattern 3: Sleep degradation trend
   if (sleepLogs.length >= 5) {
     const recent3 = sleepLogs.slice(0, 3).reduce((a, s) => a + s.durationHours, 0) / 3;
-    const prev5 = sleepLogs.slice(3, 8).reduce((a, s) => a + s.durationHours, 0) / Math.min(5, sleepLogs.slice(3, 8).length);
+    const prev5Slice = sleepLogs.slice(3, 8);
+    const prev5 = prev5Slice.length > 0 ? prev5Slice.reduce((a, s) => a + s.durationHours, 0) / prev5Slice.length : 0;
     if (prev5 > 0 && recent3 < prev5 - 0.5) {
       nudges.push({ priority: 'high', emoji: '😴', message: `Sleep dropping: avg ${recent3.toFixed(1)}hrs last 3 nights vs ${prev5.toFixed(1)}hrs before. This is silently killing your gym performance.` });
     }
@@ -76,9 +77,11 @@ async function buildPatternNudges(user) {
 
   // Pattern 5: Weight stall for 2+ weeks
   const recentWeights = await prisma.weightLog.findMany({ where: { userId: user.id }, orderBy: { loggedAt: 'desc' }, take: 14 }).catch(() => []);
-  if (recentWeights.length >= 7) {
-    const recentAvg = recentWeights.slice(0, 7).reduce((a, w) => a + w.weightKg, 0) / 7;
-    const prevAvg = recentWeights.slice(7, 14).reduce((a, w) => a + w.weightKg, 0) / Math.min(7, recentWeights.slice(7).length);
+  if (recentWeights.length >= 14) {
+    const recent7 = recentWeights.slice(0, 7);
+    const prev7 = recentWeights.slice(7, 14);
+    const recentAvg = recent7.reduce((a, w) => a + w.weightKg, 0) / recent7.length;
+    const prevAvg = prev7.reduce((a, w) => a + w.weightKg, 0) / prev7.length;
     if (prevAvg > 0 && Math.abs(recentAvg - prevAvg) < 0.3 && user.targetWeightKg && Math.abs(recentAvg - user.targetWeightKg) > 2) {
       nudges.push({ priority: 'medium', emoji: '⚖️', message: `Weight stuck at ~${recentAvg.toFixed(1)}kg for 2 weeks. Consider adjusting calories by 100-150kcal to break the plateau.` });
     }

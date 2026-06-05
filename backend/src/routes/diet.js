@@ -50,7 +50,11 @@ router.get('/frequent-meals', async (req, res) => {
 // Barcode lookup via Open Food Facts (free, no API key needed)
 router.get('/barcode/:code', async (req, res) => {
   try {
-    const r = await fetch(`https://world.openfoodfacts.org/api/v0/product/${encodeURIComponent(req.params.code)}.json`);
+    const code = req.params.code;
+    if (!code || code.length > 25 || !/^[0-9A-Za-z-]+$/.test(code)) {
+      return res.status(400).json({ error: 'Invalid barcode format' });
+    }
+    const r = await fetch(`https://world.openfoodfacts.org/api/v0/product/${encodeURIComponent(code)}.json`);
     const data = await r.json();
     if (data.status !== 1 || !data.product) return res.status(404).json({ error: 'Product not found in Open Food Facts' });
     const { nutriments = {}, product_name, quantity } = data.product;

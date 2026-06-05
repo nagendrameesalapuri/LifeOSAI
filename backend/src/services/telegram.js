@@ -226,6 +226,9 @@ async function handleSleep(msg, match) {
   const wake = new Date(); wake.setHours(wH, wM, 0, 0);
   if (wake < bed) wake.setDate(wake.getDate() + 1);
   const duration = (wake.getTime() - bed.getTime()) / (1000 * 60 * 60);
+  if (duration <= 0 || duration > 16) {
+    return bot.sendMessage(chatId, '⚠️ Invalid sleep times. Make sure wake time is after bed time.\nExample: /sleep 23:00 07:00');
+  }
   await prisma.sleepLog.create({ data: { userId: user.id, bedtime: bed, wakeupTime: wake, durationHours: duration, qualityScore: duration >= 7 ? 8 : 5 } });
   const recentSleep = await prisma.sleepLog.findMany({ where: { userId: user.id }, orderBy: { loggedAt: 'desc' }, take: 3 });
   const avgRecent = recentSleep.reduce((a, s) => a + s.durationHours, 0) / recentSleep.length;

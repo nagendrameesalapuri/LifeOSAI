@@ -32,15 +32,15 @@ router.post('/chat/stream', async (req, res) => {
   let savedUserMsg = null;
 
   try {
-    // Save user message and load context in parallel
-    const [savedMsg, dbHistory, context] = await Promise.all([
-      chat.saveMessage(userId, 'user', message),
-      chat.getHistoryForClaude(userId),
+    // Save user message FIRST, then fetch history in parallel with context.
+    // Parallel fetch would race with the INSERT and miss the new message.
+    savedUserMsg = await chat.saveMessage(userId, 'user', message);
+
+    const [dbHistory, context] = await Promise.all([
+      chat.getHistoryForClaude(userId),   // now includes the saved message
       memory.getContextualMemory(userId),
     ]);
-    savedUserMsg = savedMsg;
 
-    // getHistoryForClaude already includes the saved user message
     const messages = dbHistory.length > 0 ? dbHistory : [{ role: 'user', content: message }];
 
     const stream = await anthropic.messages.stream({

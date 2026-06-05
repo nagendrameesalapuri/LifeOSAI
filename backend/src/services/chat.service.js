@@ -51,7 +51,10 @@ function sanitizeForClaude(messages) {
 }
 
 async function deleteMessage(id) {
-  return prisma.chatMessage.delete({ where: { id } }).catch(() => {});
+  return prisma.chatMessage.delete({ where: { id } }).catch((e) => {
+    console.error('Failed to delete orphaned chat message:', e.message);
+    return null;
+  });
 }
 
 async function clearHistory(userId) {

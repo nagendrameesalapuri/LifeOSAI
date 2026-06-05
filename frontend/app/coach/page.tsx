@@ -106,9 +106,11 @@ export default function CoachPage() {
               return updated;
             });
           } catch (parseErr: any) {
-            // Re-throw server-sent errors so the outer catch can show them to the user.
-            // Ignore JSON parse errors from partial/malformed SSE frames.
-            if (parseErr.message && !parseErr.message.startsWith('JSON')) throw parseErr;
+            // SyntaxError = bad JSON from partial SSE frame — ignore silently.
+            // Anything else (e.g. server-sent error via parsed.error) — re-throw so
+            // the outer catch shows it to the user.
+            if (parseErr instanceof SyntaxError) continue;
+            throw parseErr;
           }
         }
       }
