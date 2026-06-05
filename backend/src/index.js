@@ -44,6 +44,8 @@ app.get('/api/health', (req, res) => {
 // Public routes (no auth required)
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/telegram', require('./routes/telegram'));
+// Admin routes — protected by X-Admin-Secret header only (no JWT needed)
+app.use('/api/admin', require('./routes/admin'));
 
 // All routes below require authentication
 app.use('/api', authMiddleware);
@@ -58,7 +60,6 @@ app.use('/api/kannada', require('./routes/kannada'));
 app.use('/api/career', require('./routes/career'));
 app.use('/api/analytics', require('./routes/analytics'));
 app.use('/api/reports', require('./routes/reports'));
-app.use('/api/admin', require('./routes/admin'));
 
 // 404 handler
 app.use((req, res) => {
