@@ -30,7 +30,9 @@ export default function DietPage() {
   const [water, setWater] = useState(0);
   const [loadingToday, setLoadingToday] = useState(true);
   const [savingWater, setSavingWater] = useState(false);
-  const WATER_GOAL = 4;
+  // Water goal comes from targets.water (set by API from user profile)
+  // 4L is only used before the API responds
+
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [plan, setPlan] = useState('');
@@ -187,13 +189,13 @@ export default function DietPage() {
         <div className="grid grid-cols-2 gap-6">
           <div className="space-y-4">
 
-            {/* Macro totals */}
+            {/* Macro totals — all targets from user profile via API */}
             <div className="grid grid-cols-4 gap-2">
               {[
-                { label: 'Calories', val: totals.cal, target: 2800, unit: 'kcal', color: totals.cal >= 2500 ? '#10b981' : '#f59e0b' },
-                { label: 'Protein',  val: totals.pro, target: 140, unit: 'g', color: totals.pro >= 120 ? '#10b981' : '#6366f1' },
-                { label: 'Carbs',    val: totals.carbs, target: 300, unit: 'g', color: '#06b6d4' },
-                { label: 'Fat',      val: totals.fat, target: 80, unit: 'g', color: '#8b5cf6' },
+                { label: 'Calories', val: totals.cal,   target: targets.calories, unit: 'kcal', color: totals.cal   >= targets.calories * 0.9 ? '#10b981' : '#f59e0b' },
+                { label: 'Protein',  val: totals.pro,   target: targets.protein,  unit: 'g',    color: totals.pro   >= targets.protein  * 0.85 ? '#10b981' : '#6366f1' },
+                { label: 'Carbs',    val: totals.carbs, target: Math.round(targets.calories * 0.4 / 4), unit: 'g', color: '#06b6d4' },
+                { label: 'Fat',      val: totals.fat,   target: Math.round(targets.calories * 0.25 / 9), unit: 'g', color: '#8b5cf6' },
               ].map((s) => (
                 <div key={s.label} className="lifeos-card text-center p-3">
                   <p className="text-[10px] text-gray-500 uppercase tracking-wide">{s.label}</p>
@@ -348,24 +350,24 @@ export default function DietPage() {
             <div className="lifeos-card">
               <div className="flex items-center justify-between mb-3">
                 <p className="text-sm font-semibold text-gray-300">💧 Water Intake</p>
-                <span className={`text-sm font-bold ${water >= WATER_GOAL ? 'text-emerald-400' : 'text-cyan-400'}`}>
-                  {water.toFixed(1)}L / {WATER_GOAL}L
-                  {water >= WATER_GOAL && ' ✅'}
+                <span className={`text-sm font-bold ${water >= targets.water ? 'text-emerald-400' : 'text-cyan-400'}`}>
+                  {water.toFixed(1)}L / {targets.water}L
+                  {water >= targets.water && ' ✅'}
                 </span>
               </div>
 
               {/* Progress bar */}
               <div className="w-full bg-[#1a1a2e] rounded-full h-2 mb-3">
                 <div className="h-2 rounded-full bg-cyan-500 transition-all duration-500"
-                  style={{ width: `${Math.min(100, (water / WATER_GOAL) * 100)}%` }} />
+                  style={{ width: `${Math.min(100, (water / targets.water) * 100)}%` }} />
               </div>
 
               {/* Quick add buttons */}
               <div className="grid grid-cols-4 gap-2 mb-2">
                 {[0.25, 0.5, 1, 1.5].map((l) => (
-                  <button key={l} disabled={savingWater || water >= WATER_GOAL}
+                  <button key={l} disabled={savingWater || water >= targets.water}
                     onClick={async () => {
-                      const newVal = Math.min(WATER_GOAL, water + l);
+                      const newVal = Math.min(targets.water, water + l);
                       setWater(newVal);
                       setSavingWater(true);
                       try { await api.logWater(newVal); } catch {} finally { setSavingWater(false); }
@@ -420,7 +422,7 @@ export default function DietPage() {
               <div className="py-10 text-center">
                 <p className="text-3xl mb-3">🍛</p>
                 <p className="text-sm text-gray-500">Get your personalized Indian meal plan</p>
-                <p className="text-xs text-gray-600 mt-1">2800 kcal · 140g protein · Budget-friendly</p>
+                <p className="text-xs text-gray-600 mt-1">{targets.calories} kcal · {targets.protein}g protein · Budget-friendly</p>
               </div>
             )}
           </div>
