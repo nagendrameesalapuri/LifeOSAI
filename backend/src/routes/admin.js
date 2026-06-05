@@ -66,17 +66,14 @@ router.post('/seed-profile', adminOnly, async (req, res) => {
         {
           userId: user.id, memoryType: 'USER_PROFILE',
           content: { name: 'Nagendra', age: 27, location: 'Bangalore', nativeLanguage: 'Telugu', currentWeight: '62kg', targetWeight: '70kg', primaryGoal: 'Lean bulk', communicationChallenges: ['confidence', 'sentence formation', 'grammar', 'word recall', 'fluency'] },
-          summary: 'Nagendra, 27, Bangalore. QA→DevOps/AI. Telugu native. Goal: 62→70kg lean bulk. Improving English, learning Kannada.',
         },
         {
           userId: user.id, memoryType: 'CAREER',
           content: { currentRole: 'QA Automation Engineer', yearsExperience: 4.1, currentSkills: ['Selenium', 'Playwright', 'Java', 'TypeScript', 'API Testing', 'CI/CD'], targetRole: 'Cloud, DevOps & AI Engineer', learningPath: ['Linux', 'Docker', 'Kubernetes', 'AWS', 'Terraform', 'Jenkins', 'Python', 'LangChain', 'AI Agents', 'MCP Servers'] },
-          summary: 'QA → DevOps/AI transition. 4.1yr experience. Target: Linux, Docker, K8s, AWS, Terraform, Python, LangChain, AI Agents.',
         },
         {
           userId: user.id, memoryType: 'LEARNING',
           content: { english: { nativeLanguage: 'Telugu', challenges: ['confidence', 'speed', 'grammar', 'word recall'], goal: 'Professional English fluency' }, kannada: { level: 'beginner', goal: 'Conversational for Bangalore daily life and workplace' } },
-          summary: 'Telugu native. English: building professional confidence. Kannada: beginner learning for Bangalore.',
         },
       ],
     });
