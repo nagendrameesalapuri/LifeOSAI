@@ -49,23 +49,29 @@ async function init() {
       // Webhook mode: Railway receives Telegram updates via HTTPS POST
       bot = new TelegramBot(token, { polling: false });
       await bot.getMe();
-      const webhookUrl = `${backendUrl}/api/telegram/webhook`;
-      await bot.setWebhook(webhookUrl);
-      console.log(`Telegram bot started (webhook mode) → ${webhookUrl}`);
+      await registerWebhook();
     } else {
       // Polling mode: local development only
       bot = new TelegramBot(token, { polling: true });
       await bot.getMe();
-      // Clear any stale webhook — method name varies by library version, try both
+      // Clear any stale webhook — method name varies by library version
       try { await (bot.deleteWebHook || bot.deleteWebhook).call(bot); } catch {}
       console.log('Telegram bot started (polling mode)');
     }
     await loadActiveChatIds();
-    registerCommands();
+    await registerCommands();
   } catch (e) {
-    console.log('Telegram bot token invalid — bot disabled:', e.message);
+    console.log('Telegram bot init failed:', e.message);
     bot = null;
   }
+}
+
+async function registerWebhook() {
+  const backendUrl = process.env.BACKEND_URL;
+  if (!bot || !backendUrl) throw new Error('bot or BACKEND_URL not set');
+  const webhookUrl = `${backendUrl.replace(/\/$/, '')}/api/telegram/webhook`;
+  await bot.setWebhook(webhookUrl);
+  console.log(`Telegram webhook registered → ${webhookUrl}`);
 }
 
 async function loadActiveChatIds() {
@@ -101,6 +107,7 @@ function registerCommands() {
     }
   };
 
+  bot.onText(/\/ping/, (msg) => bot.sendMessage(msg.chat.id, '✅ LIFEOS bot is alive!'));
   bot.onText(/\/start/, safe((msg) => handleStart(msg)));
   bot.onText(/\/checkin/, safe((msg) => handleMorningCheckin(msg)));
   bot.onText(/\/weight (.+)/, safe((msg, match) => handleWeight(msg, match)));
@@ -122,16 +129,21 @@ function registerCommands() {
 
 async function handleStart(msg) {
   const chatId = msg.chat.id;
+  const fromId = String(msg.from?.id || chatId);
   activeChatIds.add(chatId);
 
-  // Link this Telegram chat to the first user in DB (single-user app)
-  // In multi-user: the user must have signed in on the web app first
+  // Link this Telegram chat to the user account.
+  // First check if this chatId is already linked; if not, link to the first user.
   try {
-    const user = await prisma.user.findFirst({ select: { id: true } });
-    if (user) {
-      await prisma.user.update({ where: { id: user.id }, data: { telegramChatId: String(chatId) } });
+    const alreadyLinked = await prisma.user.findFirst({ where: { telegramChatId: String(chatId) }, select: { id: true } });
+    if (!alreadyLinked) {
+      const user = await prisma.user.findFirst({ select: { id: true } });
+      if (user) {
+        await prisma.user.update({ where: { id: user.id }, data: { telegramChatId: String(chatId) } });
+        console.log(`Telegram: linked chatId ${chatId} to userId ${user.id}`);
+      }
     }
-  } catch {}
+  } catch (e) { console.error('Telegram /start link error:', e.message); }
 
   bot.sendMessage(chatId, `🚀 *LIFEOS AI Coach — Your Life OS*\n\nWelcome back\\! I'm your personal life coach\\.\n\n*📅 Daily Log:*\n/checkin — Morning check\\-in \\& priorities\n/weight 63\\.5 — log weight\n/workout push 60 — log workout\n/sleep 23:00 07:00 — log sleep\n/study Docker 45 — log study\n/english I go yesterday — correct grammar\n/kannada — today's lesson\n/water 0\\.5 — log water\n\n*📊 Analysis:*\n/profile — your full profile \\& stats\n/report — weekly life report\n/plan — today's full plan\n/nudge — AI\\-detected patterns\n/coach \\[question\\] — chat with coach\n\n💡 Use /checkin every morning\\!`, { parse_mode: 'MarkdownV2' });
 }
@@ -395,9 +407,16 @@ async function handleCoach(msg, match) {
 async function handleFreeChat(msg) {
   const chatId = msg.chat.id; activeChatIds.add(chatId);
   const user = await getUser(msg.from?.id);
-  if (!user) return;
-  const response = await ai.chat(user.id, msg.text);
-  bot.sendMessage(chatId, fmt(response), { parse_mode: 'Markdown' });
+  if (!user) {
+    return bot.sendMessage(chatId, 'Please send /start first to link your account.').catch(() => {});
+  }
+  try {
+    const response = await ai.chat(user.id, msg.text);
+    bot.sendMessage(chatId, fmt(response), { parse_mode: 'Markdown' });
+  } catch (e) {
+    console.error('Telegram free chat error:', e.message);
+    bot.sendMessage(chatId, '⚠️ AI is temporarily unavailable. Try again in a moment.').catch(() => {});
+  }
 }
 
 async function handleWater(msg, match) {
@@ -519,4 +538,4 @@ async function sendPatternNudge(chatId, nudges) {
   try { await bot.sendMessage(chatId, text, { parse_mode: 'Markdown' }); } catch (e) { console.error('Pattern nudge send error:', e.message); }
 }
 
-module.exports = { init, processWebhook, sendMorningCheckins, sendEveningNudges, sendWeeklyPlanning, sendWaterReminders, sendPatternNudge };
+module.exports = { init, processWebhook, registerWebhook, sendMorningCheckins, sendEveningNudges, sendWeeklyPlanning, sendWaterReminders, sendPatternNudge };
