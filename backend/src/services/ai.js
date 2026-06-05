@@ -71,6 +71,11 @@ async function chatWithHistory(userId, message, history = []) {
     ...history.slice(-20).map(m => ({ role: m.role, content: m.content })),
     { role: 'user', content: message },
   ];
+  return chatWithMessages(userId, context, messages);
+}
+
+// Called by routes that have already built the messages array from DB history
+async function chatWithMessages(userId, context, messages) {
   const response = await anthropic.messages.create({
     model: SONNET, max_tokens: 1024,
     system: await promptService.get('MAIN_COACH', context),
@@ -329,7 +334,7 @@ async function callHaikuVision(imageBase64, mediaType, prompt) {
 }
 
 module.exports = {
-  chat, chatWithHistory, correctEnglish, generateWorkoutPlan, generateWorkoutProgram,
+  chat, chatWithHistory, chatWithMessages, correctEnglish, generateWorkoutPlan, generateWorkoutProgram,
   callHaiku, callHaikuVision,
   generateDietPlan, getKannadaLesson, careerCoach, generateWeeklyReport,
   generateDailyPlan, getEnglishLesson, practiceEnglishSpeaking,

@@ -2,10 +2,20 @@ const router = require('express').Router();
 const ai = require('../services/ai');
 const anthropic = require('../lib/anthropic');
 const memory = require('../services/memory');
-const { SYSTEM_PROMPTS } = require('../data/prompts');
+const chat = require('../services/chat.service');
 const promptService = require('../services/prompt.service');
 
-// Streaming chat with conversation history
+// GET chat history (for page load)
+router.get('/chat/history', async (req, res) => {
+  try { res.json(await chat.getHistory(req.user.id)); } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// DELETE chat history
+router.delete('/chat/history', async (req, res) => {
+  try { await chat.clearHistory(req.user.id); res.json({ ok: true }); } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Streaming chat — loads history from DB, saves every message, full user data context
 router.post('/chat/stream', async (req, res) => {
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
@@ -13,15 +23,20 @@ router.post('/chat/stream', async (req, res) => {
   res.flushHeaders();
 
   try {
-    const { message, history = [] } = req.body;
-    const context = await memory.getContextualMemory(req.user.id);
+    const { message } = req.body;
+    const userId = req.user.id;
 
-    // Build messages array with conversation history (last 10 exchanges)
-    const trimmedHistory = history.slice(-20); // max 20 messages (10 exchanges)
-    const messages = [
-      ...trimmedHistory.map(m => ({ role: m.role, content: m.content })),
-      { role: 'user', content: message },
-    ];
+    // Save user message to DB first
+    await chat.saveMessage(userId, 'user', message);
+
+    // Load full history from DB + rich user context in parallel
+    const [dbHistory, context] = await Promise.all([
+      chat.getHistoryForClaude(userId),
+      memory.getContextualMemory(userId),
+    ]);
+
+    // dbHistory already includes the message we just saved
+    const messages = dbHistory.length > 0 ? dbHistory : [{ role: 'user', content: message }];
 
     const stream = await anthropic.messages.stream({
       model: 'claude-sonnet-4-6',
@@ -30,11 +45,16 @@ router.post('/chat/stream', async (req, res) => {
       messages,
     });
 
+    let fullResponse = '';
     for await (const chunk of stream) {
       if (chunk.type === 'content_block_delta' && chunk.delta?.type === 'text_delta') {
+        fullResponse += chunk.delta.text;
         res.write(`data: ${JSON.stringify({ text: chunk.delta.text })}\n\n`);
       }
     }
+
+    // Save assistant response to DB after stream completes
+    await chat.saveMessage(userId, 'assistant', fullResponse);
 
     res.write('data: [DONE]\n\n');
     res.end();
@@ -44,11 +64,21 @@ router.post('/chat/stream', async (req, res) => {
   }
 });
 
-// Non-streaming chat (fallback + Telegram)
+// Non-streaming chat (Telegram / fallback) — also saves to DB
 router.post('/chat', async (req, res) => {
   try {
-    const { message, history = [] } = req.body;
-    const response = await ai.chatWithHistory(req.user.id, message, history);
+    const { message } = req.body;
+    const userId = req.user.id;
+
+    await chat.saveMessage(userId, 'user', message);
+    const [dbHistory, context] = await Promise.all([
+      chat.getHistoryForClaude(userId),
+      memory.getContextualMemory(userId),
+    ]);
+
+    const messages = dbHistory.length > 0 ? dbHistory : [{ role: 'user', content: message }];
+    const response = await ai.chatWithMessages(userId, context, messages);
+    await chat.saveMessage(userId, 'assistant', response);
     res.json({ response });
   } catch (e) {
     res.status(500).json({ error: e.message });

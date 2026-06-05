@@ -105,6 +105,8 @@ export const api = {
   getCorrelationInsights: (token: string) => apiCall('/analytics/correlations', {}, token),
 
   // AI
+  getChatHistory: (token: string) => apiCall('/ai/chat/history', {}, token),
+  clearChatHistory: (token: string) => apiCall('/ai/chat/history', { method: 'DELETE' }, token),
   chat: (token: string, message: string) =>
     apiCall('/ai/chat', { method: 'POST', body: JSON.stringify({ message }) }, token),
   getDailyPlan: (token: string) => apiCall('/ai/daily-plan', {}, token),

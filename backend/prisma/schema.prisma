@@ -60,6 +60,7 @@ model User {
   errorPatterns     ErrorPattern[]
   morningCheckins   MorningCheckin[]
   workoutPrograms   WorkoutProgram[]
+  chatMessages      ChatMessage[]
 
   @@map("users")
 }
@@ -356,6 +357,18 @@ model WorkoutSession {
   program     WorkoutProgram @relation(fields: [programId], references: [id], onDelete: Cascade)
 
   @@map("workout_sessions")
+}
+
+model ChatMessage {
+  id        String   @id @default(cuid())
+  userId    String
+  role      String   // 'user' | 'assistant'
+  content   String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@map("chat_messages")
 }
 
 model PromptTemplate {

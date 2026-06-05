@@ -3,7 +3,7 @@ import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useApi } from '@/lib/hooks/useApi';
 import { Sidebar } from '@/components/layout/Sidebar';
-import { Send, Bot, User, X, MessageCircle } from 'lucide-react';
+import { Send, Bot, User, X, MessageCircle, Trash2 } from 'lucide-react';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -20,21 +20,38 @@ const QUICK_PROMPTS = [
   'Correct my English: I am going gym yesterday',
 ];
 
+const WELCOME: Message = {
+  role: 'assistant',
+  content: `Hey! I'm your LIFEOS AI Coach.\n\nI remember every conversation we've had. I also check your latest workouts, sleep, diet, and habits before answering — so my advice is always based on your actual data.\n\nAsk me anything.`,
+  timestamp: new Date(),
+};
+
 export default function CoachPage() {
   const api = useApi();
   const [profile, setProfile] = useState<any>(null);
   const [showTelegramBanner, setShowTelegramBanner] = useState(true);
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      role: 'assistant',
-      content: `Hey! I'm your LIFEOS AI Coach.\n\nI know your goals, workout history, sleep patterns, and progress. I learn from every session you log.\n\nAsk me anything or use a quick prompt below. I'll give you specific, data-driven answers — not generic advice.`,
-      timestamp: new Date(),
-    },
-  ]);
+  const [historyLoaded, setHistoryLoaded] = useState(false);
+  const [messages, setMessages] = useState<Message[]>([WELCOME]);
 
+  // Load persistent chat history from DB on mount
   useEffect(() => {
     api.getProfile().then(setProfile).catch(() => {});
+    api.getChatHistory().then((history: any[]) => {
+      if (history?.length > 0) {
+        setMessages([
+          WELCOME,
+          ...history.map(m => ({ role: m.role as 'user' | 'assistant', content: m.content, timestamp: new Date(m.createdAt) })),
+        ]);
+      }
+      setHistoryLoaded(true);
+    }).catch(() => setHistoryLoaded(true));
   }, []);
+
+  async function clearChat() {
+    if (!confirm('Clear all chat history? This cannot be undone.')) return;
+    await api.clearChatHistory().catch(() => {});
+    setMessages([WELCOME]);
+  }
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -50,9 +67,6 @@ export default function CoachPage() {
     setInput('');
 
     const userMsg: Message = { role: 'user', content: msg, timestamp: new Date() };
-    // Build history excluding the initial welcome message
-    const history = messages.slice(1).map(m => ({ role: m.role, content: m.content }));
-
     setMessages(prev => [...prev, userMsg]);
     setLoading(true);
 
@@ -66,7 +80,7 @@ export default function CoachPage() {
       const res = await fetch(`${apiUrl}/ai/chat/stream`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ message: msg, history }),
+        body: JSON.stringify({ message: msg }),
       });
 
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -143,9 +157,18 @@ export default function CoachPage() {
             </p>
           </div>
 
-          <div className="flex items-center gap-1.5 flex-shrink-0">
-            <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="text-[11px] text-gray-500">Online</span>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <div className="flex items-center gap-1.5">
+              <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="text-[11px] text-gray-500">Online</span>
+            </div>
+            <button
+              onClick={clearChat}
+              title="Clear chat history"
+              className="p-1.5 rounded-lg text-gray-600 hover:text-red-400 hover:bg-red-500/10 transition-all"
+            >
+              <Trash2 size={13} />
+            </button>
           </div>
         </div>
 

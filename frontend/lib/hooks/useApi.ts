@@ -90,6 +90,8 @@ export function useApi() {
     getCorrelationInsights: () => withToken(api.getCorrelationInsights),
 
     // AI
+    getChatHistory: () => withToken(api.getChatHistory),
+    clearChatHistory: () => withToken(api.clearChatHistory),
     chat: (message: string) => withToken((t) => api.chat(t, message)),
     getDailyPlan: () => withToken(api.getDailyPlan),
 
