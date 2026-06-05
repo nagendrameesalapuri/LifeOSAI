@@ -504,8 +504,9 @@ async function sendWaterReminders() {
 }
 
 function processWebhook(body) {
-  // Only used in production webhook mode; polling handles updates automatically
-  if (bot && process.env.NODE_ENV === 'production') bot.processUpdate(body);
+  // Process webhook updates whenever bot is initialised.
+  // Do NOT gate on NODE_ENV — Railway doesn't set it, causing all updates to be silently dropped.
+  if (bot) bot.processUpdate(body);
 }
 
 async function sendPatternNudge(chatId, nudges) {
