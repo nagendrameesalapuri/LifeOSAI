@@ -82,23 +82,28 @@ async function loadActiveChatIds() {
   } catch {}
 }
 
-function registerCommands() {
-  bot.setMyCommands([
-    { command: 'start', description: 'Start LIFEOS bot' },
-    { command: 'checkin', description: 'Morning check-in' },
-    { command: 'weight', description: 'Log weight (e.g. /weight 63.5)' },
-    { command: 'workout', description: 'Log workout (e.g. /workout push 60)' },
-    { command: 'sleep', description: 'Log sleep (e.g. /sleep 23:00 07:00)' },
-    { command: 'study', description: 'Log study (e.g. /study Docker 45)' },
-    { command: 'english', description: 'Correct English (e.g. /english I go yesterday)' },
-    { command: 'kannada', description: "Today's Kannada lesson" },
-    { command: 'water', description: 'Log water (e.g. /water 0.5)' },
-    { command: 'profile', description: 'Your full profile & life stats' },
-    { command: 'report', description: 'Weekly life report' },
-    { command: 'plan', description: "Today's personalized plan" },
-    { command: 'nudge', description: 'Get proactive insights' },
-    { command: 'coach', description: 'Chat with AI coach' },
-  ]);
+async function registerCommands() {
+  // setMyCommands is non-critical — failure must NOT crash the process
+  try {
+    await bot.setMyCommands([
+      { command: 'start', description: 'Start LIFEOS bot' },
+      { command: 'checkin', description: 'Morning check-in' },
+      { command: 'weight', description: 'Log weight (e.g. /weight 63.5)' },
+      { command: 'workout', description: 'Log workout (e.g. /workout push 60)' },
+      { command: 'sleep', description: 'Log sleep (e.g. /sleep 23:00 07:00)' },
+      { command: 'study', description: 'Log study (e.g. /study Docker 45)' },
+      { command: 'english', description: 'Correct English (e.g. /english I go yesterday)' },
+      { command: 'kannada', description: "Today's Kannada lesson" },
+      { command: 'water', description: 'Log water (e.g. /water 0.5)' },
+      { command: 'profile', description: 'Your full profile & life stats' },
+      { command: 'report', description: 'Weekly life report' },
+      { command: 'plan', description: "Today's personalized plan" },
+      { command: 'nudge', description: 'Get proactive insights' },
+      { command: 'coach', description: 'Chat with AI coach' },
+    ]);
+  } catch (e) {
+    console.warn('setMyCommands failed (non-fatal):', e.message);
+  }
 
   const safe = (fn) => async (...args) => {
     try { await fn(...args); } catch (e) {
