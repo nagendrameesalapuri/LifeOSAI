@@ -17,25 +17,30 @@ router.delete('/chat/history', async (req, res) => {
 
 // Streaming chat — loads history from DB, saves every message, full user data context
 router.post('/chat/stream', async (req, res) => {
+  const { message } = req.body;
+  // Validate before flushHeaders — once SSE starts we can't send HTTP error codes
+  if (!message?.trim()) {
+    return res.status(400).json({ error: 'message required' });
+  }
+
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
   res.flushHeaders();
 
+  const userId = req.user.id;
+  let savedUserMsg = null;
+
   try {
-    const { message } = req.body;
-    const userId = req.user.id;
-
-    // Save user message to DB first
-    await chat.saveMessage(userId, 'user', message);
-
-    // Load full history from DB + rich user context in parallel
-    const [dbHistory, context] = await Promise.all([
+    // Save user message and load context in parallel
+    const [savedMsg, dbHistory, context] = await Promise.all([
+      chat.saveMessage(userId, 'user', message),
       chat.getHistoryForClaude(userId),
       memory.getContextualMemory(userId),
     ]);
+    savedUserMsg = savedMsg;
 
-    // dbHistory already includes the message we just saved
+    // getHistoryForClaude already includes the saved user message
     const messages = dbHistory.length > 0 ? dbHistory : [{ role: 'user', content: message }];
 
     const stream = await anthropic.messages.stream({
@@ -53,12 +58,17 @@ router.post('/chat/stream', async (req, res) => {
       }
     }
 
-    // Save assistant response to DB after stream completes
+    // Save assistant response — keeps history alternating correctly
     await chat.saveMessage(userId, 'assistant', fullResponse);
 
     res.write('data: [DONE]\n\n');
     res.end();
   } catch (e) {
+    // If streaming failed after saving user message but before saving assistant response,
+    // delete the orphaned user message so history stays alternating for next request.
+    if (savedUserMsg?.id) {
+      await chat.deleteMessage(savedUserMsg.id).catch(() => {});
+    }
     res.write(`data: ${JSON.stringify({ error: e.message })}\n\n`);
     res.end();
   }

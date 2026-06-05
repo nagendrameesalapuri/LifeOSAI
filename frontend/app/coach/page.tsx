@@ -30,7 +30,7 @@ export default function CoachPage() {
   const api = useApi();
   const [profile, setProfile] = useState<any>(null);
   const [showTelegramBanner, setShowTelegramBanner] = useState(true);
-  const [historyLoaded, setHistoryLoaded] = useState(false);
+  const [historyLoading, setHistoryLoading] = useState(true);
   const [messages, setMessages] = useState<Message[]>([WELCOME]);
 
   // Load persistent chat history from DB on mount
@@ -43,8 +43,7 @@ export default function CoachPage() {
           ...history.map(m => ({ role: m.role as 'user' | 'assistant', content: m.content, timestamp: new Date(m.createdAt) })),
         ]);
       }
-      setHistoryLoaded(true);
-    }).catch(() => setHistoryLoaded(true));
+    }).catch(() => {}).finally(() => setHistoryLoading(false));
   }, []);
 
   async function clearChat() {
@@ -63,7 +62,7 @@ export default function CoachPage() {
 
   async function sendMessage(text?: string) {
     const msg = text || input.trim();
-    if (!msg || loading) return;
+    if (!msg || loading || historyLoading) return;
     setInput('');
 
     const userMsg: Message = { role: 'user', content: msg, timestamp: new Date() };
@@ -201,6 +200,11 @@ export default function CoachPage() {
 
         {/* ── Messages — flex-1 + min-h-0 enables inner scroll ── */}
         <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-4 py-4 space-y-4">
+          {historyLoading && (
+            <div className="flex justify-center py-4">
+              <p className="text-[11px] text-gray-600 animate-pulse">Loading conversation history...</p>
+            </div>
+          )}
           <AnimatePresence initial={false}>
             {messages.map((msg, i) => (
               <motion.div
