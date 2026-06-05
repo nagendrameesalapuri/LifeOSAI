@@ -6,7 +6,8 @@ import { useState } from 'react';
 import {
   LayoutDashboard, Dumbbell, MessageSquare, BookOpen,
   MoreHorizontal, X, Weight, Utensils, Moon, CheckSquare,
-  Languages, Zap, BarChart3, FileText, Calendar, Settings, LogOut,
+  Languages, Zap, BarChart3, FileText, Settings, LogOut,
+  User, Sun,
 } from 'lucide-react';
 
 // Primary tabs always visible
@@ -41,6 +42,13 @@ const MORE_GROUPS = [
     items: [
       { href: '/analytics', icon: BarChart3, label: 'Analytics' },
       { href: '/reports',   icon: FileText,  label: 'Reports' },
+    ],
+  },
+  {
+    label: 'Account',
+    items: [
+      { href: '/profile', icon: User, label: 'My Profile' },
+      { href: '/checkin', icon: Sun,  label: 'Check-in' },
     ],
   },
 ];

@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useApi } from '@/lib/hooks/useApi';
 import { useRouter } from 'next/navigation';
@@ -130,6 +130,15 @@ export default function OnboardingPage() {
   const api = useApi();
   const router = useRouter();
   const [step, setStep] = useState(0);
+
+  // If user already completed onboarding, redirect to dashboard
+  useEffect(() => {
+    api.getProfile().then((profile: any) => {
+      if (profile?.onboardingComplete === true) {
+        router.replace('/dashboard');
+      }
+    }).catch(() => {});
+  }, []);
   const [data, setData] = useState<Record<string, any>>({
     weightKg: '',
     targetWeightKg: '',

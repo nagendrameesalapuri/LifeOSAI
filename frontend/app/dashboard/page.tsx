@@ -176,19 +176,42 @@ export default function DashboardPage() {
   const [plan, setPlan] = useState<string>('');
   const [nutrition, setNutrition] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [onboardingChecked, setOnboardingChecked] = useState(false);
   const [planLoading, setPlanLoading] = useState(false);
   const [expandedScore, setExpandedScore] = useState<string | null>(null);
   const [correlations, setCorrelations] = useState<any>(null);
   const [checkinDone, setCheckinDone] = useState(false);
 
-  useEffect(() => { loadDashboard(); }, []);
+  useEffect(() => {
+    // Check onboarding status FIRST via lightweight profile call.
+    // This avoids the flash of empty dashboard before redirect.
+    api.getProfile().then((profile: any) => {
+      if (profile?.onboardingComplete === false) {
+        router.replace('/onboarding');
+      } else {
+        setOnboardingChecked(true);
+        loadDashboard();
+      }
+    }).catch(() => {
+      setOnboardingChecked(true);
+      loadDashboard();
+    });
+  }, []);
+
+  // Show nothing until onboarding check resolves — prevents flash
+  if (!onboardingChecked) {
+    return (
+      <div className="flex min-h-screen bg-[#0a0a0f] items-center justify-center">
+        <div className="w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   async function loadDashboard() {
     const DASHBOARD_TTL = 5 * 60 * 1000; // 5 min
 
     setLoading(true);
     try {
-      // Try session cache first for dashboard + diet (heavy DB queries)
       const cachedDash = cache.get('dashboard_data');
       const cachedDiet = cache.get('dashboard_diet');
 
@@ -201,12 +224,6 @@ export default function DashboardPage() {
 
       if (!cachedDash && dash) cache.set('dashboard_data', dash, DASHBOARD_TTL);
       if (!cachedDiet && diet) cache.set('dashboard_diet', diet, DASHBOARD_TTL);
-
-      // Redirect new users to onboarding before showing empty dashboard
-      if (dash?.user?.onboardingComplete === false) {
-        router.replace('/onboarding');
-        return;
-      }
 
       setDashboard(dash);
       setNutrition(diet);
