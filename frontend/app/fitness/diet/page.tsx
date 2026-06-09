@@ -99,8 +99,10 @@ export default function DietPage() {
         setError('Could not parse. Try: "Rice 300g, Chicken 200g"');
         return;
       }
-      setMeals(p => [...p, ...data.items]);
+      const updated = [...meals, ...data.items];
+      setMeals(updated);
       setInput('');
+      silentSave(updated);
     } catch (e) {
       setError('Failed to calculate nutrition. Try again.');
     } finally {
@@ -120,12 +122,16 @@ export default function DietPage() {
       });
       const data = await api.parseMealFromPhoto(base64, file.type || 'image/jpeg');
       if (!data?.items?.length) { setError('Could not identify food. Try a clearer photo or type instead.'); return; }
-      setMeals(p => [...p, ...data.items]);
+      const updated = [...meals, ...data.items];
+      setMeals(updated);
+      silentSave(updated);
     } catch { setError('Photo analysis failed. Try typing instead.'); } finally { setPhotoLoading(false); }
   }
 
   function addFrequentMeal(m: any) {
-    setMeals(p => [...p, { name: m.name, quantity: '', calories: m.calories, protein: m.protein, carbs: m.carbs || 0, fat: m.fat || 0, fiber: 0 }]);
+    const updated = [...meals, { name: m.name, quantity: '', calories: m.calories, protein: m.protein, carbs: m.carbs || 0, fat: m.fat || 0, fiber: 0 }];
+    setMeals(updated);
+    silentSave(updated);
   }
 
   async function lookupBarcode() {
@@ -134,28 +140,51 @@ export default function DietPage() {
     setError('');
     try {
       const data = await api.getBarcodeNutrition(barcodeInput.trim());
-      setMeals(p => [...p, { name: data.name, quantity: data.quantity, calories: data.calories, protein: data.protein, carbs: data.carbs, fat: data.fat, fiber: data.fiber || 0 }]);
+      const updated = [...meals, { name: data.name, quantity: data.quantity, calories: data.calories, protein: data.protein, carbs: data.carbs, fat: data.fat, fiber: data.fiber || 0 }];
+      setMeals(updated);
       setBarcodeInput('');
       setShowBarcodeInput(false);
+      silentSave(updated);
     } catch { setError('Barcode not found. Try a different code or type the meal instead.'); } finally { setBarcodeLoading(false); }
   }
 
-  function removeMeal(i: number) { setMeals(p => p.filter((_, idx) => idx !== i)); }
+  function removeMeal(i: number) {
+    const updated = meals.filter((_, idx) => idx !== i);
+    setMeals(updated);
+    silentSave(updated);
+  }
+
+  // Silently saves current meal list to DB — called after every add/remove so data persists on refresh
+  async function silentSave(currentMeals: Meal[]) {
+    if (!currentMeals.length) return;
+    const t = currentMeals.reduce(
+      (a, m) => ({ cal: a.cal + m.calories, pro: a.pro + m.protein, carbs: a.carbs + m.carbs, fat: a.fat + m.fat }),
+      { cal: 0, pro: 0, carbs: 0, fat: 0 },
+    );
+    try {
+      await api.logDiet({
+        meals: currentMeals.map(m => ({ name: m.quantity ? `${m.name} (${m.quantity})` : m.name, calories: m.calories, proteinG: m.protein, carbs: m.carbs, fat: m.fat })),
+        totalCalories: t.cal, totalProteinG: t.pro, totalCarbsG: t.carbs, totalFatsG: t.fat,
+        waterLitres: water,
+      });
+      cache.delete('diet_today');
+      cache.delete('dashboard_diet');
+    } catch (e) { console.error('Auto-save failed:', e); }
+  }
 
   async function save() {
     if (!meals.length) return;
     setSaving(true);
     try {
       await api.logDiet({
-        meals: meals.map(m => ({ name: `${m.name} (${m.quantity})`, calories: m.calories, proteinG: m.protein })),
+        meals: meals.map(m => ({ name: m.quantity ? `${m.name} (${m.quantity})` : m.name, calories: m.calories, proteinG: m.protein, carbs: m.carbs, fat: m.fat })),
         totalCalories: totals.cal,
         totalProteinG: totals.pro,
         totalCarbsG: totals.carbs,
         totalFatsG: totals.fat,
-        waterLitres: water, // carry current water value along
+        waterLitres: water,
       });
       setSaved(true);
-      setMeals([]);
       cache.delete('diet_today');
       cache.delete('dashboard_diet');
       cache.delete('dashboard_data');
