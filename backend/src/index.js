@@ -46,9 +46,10 @@ app.get('/api/health/db', async (req, res) => {
   const prisma = require('./lib/prisma');
   try {
     await prisma.$queryRaw`SELECT 1`;
-    res.json({ db: 'ok' });
+    const userCount = await prisma.user.count();
+    res.json({ db: 'ok', users: userCount });
   } catch (e) {
-    res.status(503).json({ db: 'error', code: e.code, message: e.message?.slice(0, 200) });
+    res.status(503).json({ db: 'error', code: e.code, message: e.message?.slice(0, 300) });
   }
 });
 
