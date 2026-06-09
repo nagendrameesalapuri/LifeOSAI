@@ -35,10 +35,16 @@ async function authMiddleware(req, res, next) {
     let user = null;
 
     if (googleSub) {
-      user = await prisma.user.findUnique({ where: { clerkId: googleSub } }).catch(() => null);
+      user = await prisma.user.findUnique({ where: { clerkId: googleSub } }).catch((e) => {
+        console.error('Auth: findUnique(clerkId) failed:', e.code, e.message?.slice(0, 100));
+        return null;
+      });
     }
     if (!user && email) {
-      user = await prisma.user.findUnique({ where: { email } }).catch(() => null);
+      user = await prisma.user.findUnique({ where: { email } }).catch((e) => {
+        console.error('Auth: findUnique(email) failed:', e.code, e.message?.slice(0, 100));
+        return null;
+      });
     }
 
     if (user) {
@@ -66,14 +72,17 @@ async function authMiddleware(req, res, next) {
           },
         });
       } catch (createErr) {
+        console.error('Auth: user create failed:', createErr.code, createErr.message?.slice(0, 200));
         // Unique constraint race — try finding the user one more time
         if (createErr.code === 'P2002') {
           user = await prisma.user.findFirst({
             where: { OR: [{ clerkId: googleSub }, { email }].filter(Boolean) },
-          }).catch(() => null);
+          }).catch((e) => {
+            console.error('Auth: findFirst recovery failed:', e.code, e.message?.slice(0, 100));
+            return null;
+          });
         }
         if (!user) {
-          console.error('Auth: user create failed:', createErr.code, createErr.message?.slice(0, 100));
           return res.status(503).json({ message: 'Database unavailable. Please try again shortly.' });
         }
       }
