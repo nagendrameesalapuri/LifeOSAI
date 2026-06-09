@@ -13,7 +13,8 @@ const SONNET = 'claude-sonnet-4-6';
 async function withFallback(userId, type, fn) {
   try {
     const result = await fn();
-    // Store the raw result for fallback. Wrap strings in an object so _fallback flag always works.
+    // Never cache error/parse-failure results — only store genuinely good responses
+    if (result?.parseError || result?.error) return result;
     const stored = typeof result === 'string' ? { _str: result } : result;
     await cache.set(`fallback:${userId}:${type}`, stored, 7 * 24 * 3600);
     return result;
@@ -21,7 +22,6 @@ async function withFallback(userId, type, fn) {
     const stale = await cache.get(`fallback:${userId}:${type}`);
     if (stale) {
       console.warn(`AI fallback served for ${type}: ${e.message}`);
-      // Unwrap strings; objects get _fallback: true so callers can show "Generated X ago"
       if (stale._str !== undefined) return stale._str;
       return { ...stale, _fallback: true };
     }
@@ -159,7 +159,7 @@ async function getKannadaLesson(userId, dayOverride) {
 
   return withFallback(userId, `kannada_lesson_day${dayNumber}`, async () => {
     const response = await anthropic.messages.create({
-      model: SONNET, max_tokens: 2500,
+      model: SONNET, max_tokens: 4000,
       system: await promptService.get('KANNADA_LESSON', userProfile),
       messages: [{ role: 'user', content: `Day ${dayNumber} of ${KANNADA_CURRICULUM.length}.\nTheme: "${curriculum.theme}"\nLevel: ${curriculum.level}\nTeach this topic with 5-7 words and 2-3 sentences for a heritage learner whose native language is ${nativeLang}.` }],
     });

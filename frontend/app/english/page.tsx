@@ -116,10 +116,9 @@ export default function EnglishPage() {
   }
 
   async function getLesson(topic?: string) {
-    // For today's default lesson, check session cache first
     if (!topic) {
       const hit = cache.get('english_lesson_today');
-      if (hit) { setLesson(hit); setLessonLoading(false); return; }
+      if (hit && !hit.error) { setLesson(hit); setLessonLoading(false); return; }
     }
     setLessonLoading(true);
     setLesson(null);
@@ -127,7 +126,7 @@ export default function EnglishPage() {
     try {
       const data = await api.getEnglishLesson(topic);
       setLesson(data);
-      if (!topic) cache.set('english_lesson_today', data); // cache until midnight
+      if (!topic && data && !data.error) cache.set('english_lesson_today', data, 60 * 1000); // 60s — backend withFallback caches long-term
     } catch (e) { console.error(e); }
     finally { setLessonLoading(false); }
   }

@@ -187,7 +187,8 @@ export default function DashboardPage() {
   }, []);
 
   async function loadDashboard() {
-    const DASHBOARD_TTL = 5 * 60 * 1000; // 5 min
+    const DASHBOARD_TTL = 5 * 60 * 1000; // 5 min for score/habit data
+    const DIET_TTL = 30 * 1000; // 30s — water logged via Telegram must appear fast
 
     setLoading(true);
     try {
@@ -202,7 +203,7 @@ export default function DashboardPage() {
           ]);
 
       if (!cachedDash && dash) cache.set('dashboard_data', dash, DASHBOARD_TTL);
-      if (!cachedDiet && diet) cache.set('dashboard_diet', diet, DASHBOARD_TTL);
+      if (!cachedDiet && diet) cache.set('dashboard_diet', diet, DIET_TTL);
 
       setDashboard(dash);
       setNutrition(diet);

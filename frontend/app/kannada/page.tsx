@@ -75,7 +75,7 @@ export default function KannadaPage() {
     try {
       const data = await api.getKannadaLesson(day);
       setLesson(data);
-      if (!day && !data?.parseError) cache.set('kannada_lesson_today', data);
+      if (!day && !data?.parseError) cache.set('kannada_lesson_today', data, 60 * 1000); // 60s — backend caches long-term
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
   }
