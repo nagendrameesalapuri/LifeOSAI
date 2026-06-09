@@ -97,7 +97,7 @@ export default function AnalyticsPage() {
   return (
     <div className="flex min-h-screen bg-[#0a0a0f]">
       <Sidebar />
-      <main className="ml-56 flex-1 p-6">
+      <main className="md:ml-56 flex-1 p-4 md:p-6 pb-24 md:pb-6">
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-2xl font-bold text-white">Analytics</h1>
@@ -122,7 +122,7 @@ export default function AnalyticsPage() {
         </div>
 
         {loading ? (
-          <div className="grid grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {[...Array(6)].map((_, i) => <div key={i} className="h-64 skeleton rounded-xl" />)}
           </div>
         ) : error ? (
@@ -131,7 +131,7 @@ export default function AnalyticsPage() {
             <button onClick={() => { setError(false); setLoading(true); api.getTrends().then(d => { setTrends(d); cache.set('analytics_trends', d, 5*60*1000); }).catch(() => setError(true)).finally(() => setLoading(false)); }} className="text-indigo-400 hover:text-indigo-300 text-sm underline">Retry</button>
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
             {/* Weight Trend */}
             <div className="lifeos-card col-span-2">

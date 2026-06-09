@@ -203,11 +203,11 @@ export default function DietPage() {
   return (
     <div className="flex min-h-screen bg-[#0a0a0f]">
       <Sidebar />
-      <main className="ml-56 flex-1 p-6">
-        <div className="flex items-center justify-between mb-6">
+      <main className="md:ml-56 flex-1 p-4 md:p-6 pb-24 md:pb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
           <div>
             <h1 className="text-2xl font-bold text-white mb-1">Diet Tracker</h1>
-            <p className="text-gray-400 text-sm">Target: {targets.calories} kcal · {targets.protein}g protein/day (calculated from your TDEE)</p>
+            <p className="text-gray-400 text-sm">Target: {targets.calories} kcal · {targets.protein}g protein/day</p>
           </div>
           <div className="flex gap-2">
             <a href="/fitness/diet/timing" className="lifeos-btn-ghost text-xs px-3 py-2">⏰ Meal Timing</a>
@@ -215,11 +215,11 @@ export default function DietPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-4">
 
             {/* Macro totals — all targets from user profile via API */}
-            <div className="grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
               {[
                 { label: 'Calories', val: totals.cal,   target: targets.calories, unit: 'kcal', color: totals.cal   >= targets.calories * 0.9 ? '#10b981' : '#f59e0b' },
                 { label: 'Protein',  val: totals.pro,   target: targets.protein,  unit: 'g',    color: totals.pro   >= targets.protein  * 0.85 ? '#10b981' : '#6366f1' },

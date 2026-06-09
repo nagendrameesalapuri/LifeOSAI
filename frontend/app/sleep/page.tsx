@@ -57,7 +57,7 @@ export default function SleepPage() {
   return (
     <div className="flex min-h-screen bg-[#0a0a0f]">
       <Sidebar />
-      <main className="ml-56 flex-1 p-6 max-w-lg">
+      <main className="md:ml-56 flex-1 p-4 md:p-6 pb-24 md:pb-6 max-w-lg">
         <h1 className="text-2xl font-bold text-white mb-1">Sleep Tracker</h1>
         <p className="text-gray-400 text-sm mb-6">Track your sleep for better recovery and discipline score</p>
 

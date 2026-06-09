@@ -74,7 +74,7 @@ export default function MorningCheckinPage() {
     return (
       <div className="flex min-h-screen bg-[#0a0a0f]">
         <Sidebar />
-        <main className="ml-56 flex-1 flex items-center justify-center">
+        <main className="md:ml-56 flex-1 flex items-center justify-center">
           <Loader2 className="w-8 h-8 text-indigo-400 animate-spin" />
         </main>
       </div>
@@ -84,7 +84,7 @@ export default function MorningCheckinPage() {
   return (
     <div className="flex min-h-screen bg-[#0a0a0f]">
       <Sidebar />
-      <main className="ml-56 flex-1 p-6 max-w-2xl">
+      <main className="md:ml-56 flex-1 p-4 md:p-6 pb-24 md:pb-6 max-w-2xl">
 
         {/* Header */}
         <div className="flex items-center gap-3 mb-8">

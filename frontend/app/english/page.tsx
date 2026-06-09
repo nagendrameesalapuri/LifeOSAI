@@ -235,7 +235,7 @@ export default function EnglishPage() {
   return (
     <div className="flex min-h-screen bg-[#0a0a0f]">
       <Sidebar />
-      <main className="ml-56 flex-1 p-6">
+      <main className="md:ml-56 flex-1 p-4 md:p-6 pb-24 md:pb-6">
         <div className="flex items-start justify-between mb-4">
           <div>
             <h1 className="text-2xl font-bold text-white">English Coach</h1>

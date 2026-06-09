@@ -18,7 +18,7 @@ export default function MealTimingPage() {
     return (
       <div className="flex min-h-screen bg-[#0a0a0f]">
         <Sidebar />
-        <main className="ml-56 flex-1 p-6 flex items-center justify-center">
+        <main className="md:ml-56 flex-1 p-6 flex items-center justify-center">
           <Loader2 size={24} className="animate-spin text-indigo-400" />
         </main>
       </div>
@@ -28,7 +28,7 @@ export default function MealTimingPage() {
   return (
     <div className="flex min-h-screen bg-[#0a0a0f]">
       <Sidebar />
-      <main className="ml-56 flex-1 p-6 max-w-3xl">
+      <main className="md:ml-56 flex-1 p-4 md:p-6 pb-24 md:pb-6 max-w-3xl">
         <h1 className="text-2xl font-bold text-white mb-1">Meal Timing</h1>
         <p className="text-gray-400 text-sm mb-6">When you eat matters as much as what you eat — optimize for lean muscle growth</p>
 

@@ -58,11 +58,11 @@ export default function CareerPage() {
   return (
     <div className="flex min-h-screen bg-[#0a0a0f]">
       <Sidebar />
-      <main className="ml-56 flex-1 p-6">
+      <main className="md:ml-56 flex-1 p-4 md:p-6 pb-24 md:pb-6">
         <h1 className="text-2xl font-bold text-white mb-1">Career Roadmap</h1>
         <p className="text-gray-400 text-sm mb-6">QA → Cloud / DevOps / AI Engineering</p>
 
-        <div className="grid grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Roadmap */}
           <div>
             <div className="flex items-center justify-between mb-4">

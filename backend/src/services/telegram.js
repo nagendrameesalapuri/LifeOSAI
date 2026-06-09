@@ -530,15 +530,13 @@ async function sendWaterReminders() {
   const todayStr = new Date().toDateString();
   for (const chatId of activeChatIds) {
     try {
-      const tracker = waterTracker.get(chatId);
-      let liters = tracker?.date === todayStr ? tracker.liters : 0;
-      if (!tracker || tracker.date !== todayStr) {
-        const user = await getUser(chatId);
-        if (user) {
-          const dietLog = await prisma.dietLog.findFirst({ where: { userId: user.id, loggedAt: { gte: t, lt: tomorrow } }, orderBy: { loggedAt: 'desc' } });
-          liters = dietLog?.waterLitres ?? 0;
-          waterTracker.set(chatId, { liters, date: todayStr });
-        }
+      // Always read from DB — in-memory tracker can be stale after more water is logged
+      let liters = 0;
+      const user = await getUser(chatId);
+      if (user) {
+        const dietLog = await prisma.dietLog.findFirst({ where: { userId: user.id, loggedAt: { gte: t, lt: tomorrow } }, orderBy: { loggedAt: 'desc' } });
+        liters = dietLog?.waterLitres ?? 0;
+        waterTracker.set(chatId, { liters, date: todayStr });
       }
       if (liters >= WATER_GOAL) continue;
       const remaining = WATER_GOAL - liters;

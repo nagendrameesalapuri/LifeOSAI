@@ -64,7 +64,7 @@ export default function HabitsPage() {
   return (
     <div className="flex min-h-screen bg-[#0a0a0f]">
       <Sidebar />
-      <main className="ml-56 flex-1 p-6 max-w-2xl">
+      <main className="md:ml-56 flex-1 p-4 md:p-6 pb-24 md:pb-6 max-w-2xl">
         <div className="flex items-center justify-between mb-1">
           <h1 className="text-2xl font-bold text-white">Daily Habits</h1>
           <Link href="/checkin" className="flex items-center gap-1.5 text-xs text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-1.5 hover:bg-amber-500/20 transition-colors">

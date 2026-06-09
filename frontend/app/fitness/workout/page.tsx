@@ -157,11 +157,11 @@ export default function WorkoutPage() {
         )}
       </AnimatePresence>
 
-      <main className="ml-56 flex-1 p-6">
+      <main className="md:ml-56 flex-1 p-4 md:p-6 pb-24 md:pb-6">
         <h1 className="text-2xl font-bold text-white mb-1">Workout Log</h1>
         <p className="text-gray-400 text-sm mb-6">Log every session · Tap exercise name to see your history</p>
 
-        <div className="grid grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-4">
             {/* Workout type */}
             <div className="lifeos-card">

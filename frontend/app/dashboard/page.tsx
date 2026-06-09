@@ -310,7 +310,7 @@ export default function DashboardPage() {
     <div className="flex min-h-screen">
       <Sidebar />
 
-      <main className="ml-56 flex-1 p-4 md:p-6 space-y-4">
+      <main className="md:ml-56 flex-1 p-4 md:p-6 pb-24 md:pb-6 space-y-4">
 
         {/* ── Header ──────────────────────────────────────────────── */}
         <motion.div

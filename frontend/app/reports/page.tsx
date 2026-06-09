@@ -46,7 +46,7 @@ export default function ReportsPage() {
   return (
     <div className="flex min-h-screen bg-[#0a0a0f]">
       <Sidebar />
-      <main className="ml-56 flex-1 p-6">
+      <main className="md:ml-56 flex-1 p-4 md:p-6 pb-24 md:pb-6">
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-2xl font-bold text-white mb-1">Reports & Insights</h1>
@@ -80,7 +80,7 @@ export default function ReportsPage() {
                 </span>
               )}
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {proactiveInsights.insights?.slice(0, 4).map((insight: any, i: number) => (
                 <div key={i} className="bg-[#0d0d1a] rounded-xl p-3 border border-[#1e1e36]">
                   <div className="flex items-center gap-2 mb-1">
@@ -100,7 +100,7 @@ export default function ReportsPage() {
           </div>
         )}
 
-        <div className="grid grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {/* Reports list */}
           <div className="space-y-2">
             <div className="flex items-center justify-between mb-3">
@@ -163,7 +163,7 @@ export default function ReportsPage() {
                   </div>
 
                   {/* Stats */}
-                  <div className="grid grid-cols-4 gap-3 mb-4">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
                     {[
                       { label: 'Workouts', val: (selected.report as any)?.fitness?.workoutsCompleted || 0, emoji: '💪', vs: (selected.report as any)?.fitness?.prevWeekWorkouts },
                       { label: 'Study sessions', val: (selected.report as any)?.career?.studySessions || 0, emoji: '📚', vs: (selected.report as any)?.career?.prevWeekSessions },
