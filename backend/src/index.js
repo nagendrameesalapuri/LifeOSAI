@@ -41,6 +41,17 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString(), service: 'lifeos-backend' });
 });
 
+// DB connectivity check (no auth — temp diagnostic)
+app.get('/api/health/db', async (req, res) => {
+  const prisma = require('./lib/prisma');
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    res.json({ db: 'ok' });
+  } catch (e) {
+    res.status(503).json({ db: 'error', code: e.code, message: e.message?.slice(0, 200) });
+  }
+});
+
 // Public routes (no auth required)
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/telegram', require('./routes/telegram'));
