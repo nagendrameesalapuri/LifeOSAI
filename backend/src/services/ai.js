@@ -144,13 +144,20 @@ async function generateDietPlan(userId) {
 
 async function getKannadaLesson(userId, dayOverride) {
   const userProfile = await getUserProfile(userId);
-  const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 1).getTime()) / 86400000);
-  const curriculumIndex = (dayOverride != null ? dayOverride - 1 : dayOfYear) % KANNADA_CURRICULUM.length;
-  const curriculum = KANNADA_CURRICULUM[curriculumIndex];
-  const dayNumber = curriculumIndex + 1;
   const nativeLang = userProfile?.nativeLanguage || 'telugu';
 
-  return withFallback(userId, 'kannada_lesson', async () => {
+  // Day = completed lessons + 1, so new users always start at Day 1
+  let dayNumber = 1;
+  if (dayOverride != null) {
+    dayNumber = dayOverride;
+  } else if (userId) {
+    const completedCount = await prisma.dailyLesson.count({ where: { userId, language: 'kannada', completed: true } }).catch(() => 0);
+    dayNumber = Math.min(completedCount + 1, KANNADA_CURRICULUM.length);
+  }
+  const curriculumIndex = (dayNumber - 1) % KANNADA_CURRICULUM.length;
+  const curriculum = KANNADA_CURRICULUM[curriculumIndex];
+
+  return withFallback(userId, `kannada_lesson_day${dayNumber}`, async () => {
     const response = await anthropic.messages.create({
       model: SONNET, max_tokens: 2500,
       system: await promptService.get('KANNADA_LESSON', userProfile),
@@ -216,18 +223,24 @@ async function getEnglishLesson(topic, userId) {
     'Positive and negative words (good/bad vocabulary)', 'Idioms Indians use wrongly',
     "Speaking faster: contractions (I'm, don't, can't)", 'Building vocabulary: word families',
   ];
-  const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 1).getTime()) / 86400000);
-  const todayTopic = topic || DAILY_TOPICS[dayOfYear % DAILY_TOPICS.length];
-  const dayNumber = dayOfYear % DAILY_TOPICS.length + 1;
 
-  return withFallback(userId || 'anon', 'english_lesson', async () => {
+  // Day = number of completed lessons + 1 (so new users always start at Day 1)
+  let dayNumber = 1;
+  if (userId) {
+    const completedCount = await prisma.dailyLesson.count({ where: { userId, language: 'english', completed: true } }).catch(() => 0);
+    dayNumber = Math.min(completedCount + 1, DAILY_TOPICS.length);
+  }
+  const topicIndex = (dayNumber - 1) % DAILY_TOPICS.length;
+  const todayTopic = topic || DAILY_TOPICS[topicIndex];
+
+  return withFallback(userId || 'anon', `english_lesson_day${dayNumber}`, async () => {
     const response = await anthropic.messages.create({
       model: SONNET, max_tokens: 2000,
       system: await promptService.get('ENGLISH_LESSON', userProfile),
       messages: [{ role: 'user', content: `Day ${dayNumber}. Topic: "${todayTopic}".\nTeach this grammar topic and give 5 new vocabulary words for an Indian English learner.` }],
     });
     const raw = response.content[0].text.replace(/```json?\n?|\n?```/g, '').trim();
-    try { return JSON.parse(raw); } catch { return { topic: todayTopic, dayNumber, error: raw }; }
+    try { return { ...JSON.parse(raw), dayNumber }; } catch { return { topic: todayTopic, dayNumber, error: raw }; }
   });
 }
 

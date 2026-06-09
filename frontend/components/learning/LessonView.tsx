@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CheckCircle, XCircle, Volume2 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 const mdComponents = {
   p: ({ children }: any) => <p className="text-sm leading-relaxed mb-1 last:mb-0">{children}</p>,
@@ -16,6 +17,11 @@ const mdComponents = {
     </li>
   ),
   code: ({ children }: any) => <code className="text-[11px] bg-white/5 text-emerald-300 px-1 rounded font-mono">{children}</code>,
+  table: ({ children }: any) => <div className="overflow-x-auto my-2 rounded-lg border border-indigo-500/20"><table className="w-full text-xs">{children}</table></div>,
+  thead: ({ children }: any) => <thead className="bg-indigo-500/10">{children}</thead>,
+  th: ({ children }: any) => <th className="text-left text-[11px] font-semibold text-indigo-300 px-3 py-2 border-b border-indigo-500/20">{children}</th>,
+  td: ({ children }: any) => <td className="text-[11px] text-gray-400 px-3 py-1.5 border-b border-white/5">{children}</td>,
+  tr: ({ children }: any) => <tr className="hover:bg-white/3 transition-colors">{children}</tr>,
 };
 
 interface LessonViewProps {
@@ -50,19 +56,19 @@ export function LessonView({ lesson, showCompleteButton, onComplete, completing,
         <div className="bg-indigo-600/10 border border-indigo-600/20 rounded-lg p-3 mb-3">
           <p className="text-xs text-indigo-400 font-medium mb-1">Simple Rule:</p>
           <div className="text-sm text-white">
-            <ReactMarkdown components={{ ...mdComponents, p: ({ children }: any) => <p className="text-sm text-white leading-relaxed">{children}</p>, em: ({ children }: any) => <em className="text-indigo-300 italic">{children}</em> }}>{lesson.simpleRule}</ReactMarkdown>
+            <ReactMarkdown remarkPlugins={[remarkGfm]} components={{ ...mdComponents, p: ({ children }: any) => <p className="text-sm text-white leading-relaxed">{children}</p>, em: ({ children }: any) => <em className="text-indigo-300 italic">{children}</em> }}>{lesson.simpleRule}</ReactMarkdown>
           </div>
         </div>
         {lesson.whyItMatters && (
           <div className="text-xs text-gray-400">
-            <ReactMarkdown components={{ ...mdComponents, p: ({ children }: any) => <p className="text-xs text-gray-400 leading-relaxed">💡 {children}</p> }}>{lesson.whyItMatters}</ReactMarkdown>
+            <ReactMarkdown remarkPlugins={[remarkGfm]} components={{ ...mdComponents, p: ({ children }: any) => <p className="text-xs text-gray-400 leading-relaxed">💡 {children}</p> }}>{lesson.whyItMatters}</ReactMarkdown>
           </div>
         )}
         {lesson.memoryTrick && (
           <div className="mt-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3">
             <p className="text-xs text-yellow-400 font-medium">🧠 Memory Trick:</p>
             <div className="text-sm text-yellow-200 mt-1">
-              <ReactMarkdown components={{ ...mdComponents, p: ({ children }: any) => <p className="text-sm text-yellow-200 leading-relaxed">{children}</p>, strong: ({ children }: any) => <strong className="text-yellow-100 font-semibold">{children}</strong> }}>{lesson.memoryTrick}</ReactMarkdown>
+              <ReactMarkdown remarkPlugins={[remarkGfm]} components={{ ...mdComponents, p: ({ children }: any) => <p className="text-sm text-yellow-200 leading-relaxed">{children}</p>, strong: ({ children }: any) => <strong className="text-yellow-100 font-semibold">{children}</strong> }}>{lesson.memoryTrick}</ReactMarkdown>
             </div>
           </div>
         )}
@@ -182,7 +188,7 @@ export function LessonView({ lesson, showCompleteButton, onComplete, completing,
         <div className="lifeos-card border-cyan-600/20 bg-cyan-600/5">
           <p className="text-xs text-cyan-400 font-medium mb-2">🎯 Speaking Challenge</p>
           <div className="text-base text-white font-medium mb-2">
-            <ReactMarkdown components={{ ...mdComponents, p: ({ children }: any) => <p className="text-base text-white font-medium leading-relaxed">"{children}"</p>, strong: ({ children }: any) => <strong className="text-cyan-300 font-bold">{children}</strong> }}>{lesson.speakingChallenge || lesson.speakingTip}</ReactMarkdown>
+            <ReactMarkdown remarkPlugins={[remarkGfm]} components={{ ...mdComponents, p: ({ children }: any) => <p className="text-base text-white font-medium leading-relaxed">"{children}"</p>, strong: ({ children }: any) => <strong className="text-cyan-300 font-bold">{children}</strong> }}>{lesson.speakingChallenge || lesson.speakingTip}</ReactMarkdown>
           </div>
           <p className="text-xs text-gray-500">Say this sentence out loud 5 times. Confidence comes from practice! 💪</p>
         </div>

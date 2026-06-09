@@ -29,8 +29,14 @@ async function getUser(telegramId) {
     if (telegramId) {
       const byTelegram = await prisma.user.findFirst({ where: { telegramChatId: String(telegramId) }, select: USER_SELECT }).catch(() => null);
       if (byTelegram) return byTelegram;
+      // Auto-link: if no user has this telegramId, link the first user in DB
+      const firstUser = await prisma.user.findFirst({ select: USER_SELECT }).catch(() => null);
+      if (firstUser) {
+        await prisma.user.update({ where: { id: firstUser.id }, data: { telegramChatId: String(telegramId) } }).catch(() => {});
+        console.log(`Telegram: auto-linked chatId ${telegramId} to userId ${firstUser.id}`);
+        return firstUser;
+      }
     }
-    // No unlinked-account fallback — returning null forces the user to link via /start
     return null;
   } catch (e) { return null; }
 }

@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { useApi } from '@/lib/hooks/useApi';
 import { cache } from '@/lib/cache';
 import { Sidebar } from '@/components/layout/Sidebar';
@@ -667,7 +668,7 @@ export default function DashboardPage() {
                   <p className="text-sm font-semibold text-white">AI Insights</p>
                 </div>
                 <div className="plan-markdown">
-                  <ReactMarkdown
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}
                     components={{
                       h2: ({ children }) => <h2 className="text-xs font-bold text-indigo-300 mt-3 mb-1 first:mt-0">{children}</h2>,
                       h3: ({ children }) => <h3 className="text-xs font-semibold text-gray-300 mt-2 mb-0.5">{children}</h3>,
@@ -676,6 +677,11 @@ export default function DashboardPage() {
                       ul: ({ children }) => <ul className="space-y-0.5 mb-2 ml-1">{children}</ul>,
                       li: ({ children }) => <li className="text-xs text-gray-400 flex items-start gap-1.5"><span className="text-indigo-400 mt-0.5 shrink-0">▸</span><span>{children}</span></li>,
                       hr: () => <hr className="border-white/8 my-2" />,
+                      table: ({ children }) => <div className="overflow-x-auto my-2 rounded-lg border border-indigo-500/20"><table className="w-full text-xs">{children}</table></div>,
+                      thead: ({ children }) => <thead className="bg-indigo-500/10">{children}</thead>,
+                      th: ({ children }) => <th className="text-left text-[11px] font-semibold text-indigo-300 px-3 py-2 border-b border-indigo-500/20">{children}</th>,
+                      td: ({ children }) => <td className="text-[11px] text-gray-400 px-3 py-1.5 border-b border-white/5 last:border-0">{children}</td>,
+                      tr: ({ children }) => <tr className="hover:bg-white/3 transition-colors">{children}</tr>,
                     }}
                   >{insights}</ReactMarkdown>
                 </div>
@@ -743,7 +749,7 @@ export default function DashboardPage() {
                   </button>
                 </div>
                 <div className="plan-markdown">
-                  <ReactMarkdown
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}
                     components={{
                       h2: ({ children }) => <h2 className="text-xs font-bold text-amber-300 mt-3 mb-1 first:mt-0">{children}</h2>,
                       p: ({ children }) => <p className="text-xs text-gray-300 leading-relaxed mb-1.5">{children}</p>,
@@ -751,6 +757,11 @@ export default function DashboardPage() {
                       ul: ({ children }) => <ul className="space-y-0.5 mb-2 ml-1">{children}</ul>,
                       li: ({ children }) => <li className="text-xs text-gray-300 flex items-start gap-1.5"><span className="text-amber-400 mt-0.5 shrink-0">▸</span><span>{children}</span></li>,
                       hr: () => <hr className="border-white/8 my-2" />,
+                      table: ({ children }) => <div className="overflow-x-auto my-2 rounded-lg border border-amber-500/20"><table className="w-full text-xs">{children}</table></div>,
+                      thead: ({ children }) => <thead className="bg-amber-500/10">{children}</thead>,
+                      th: ({ children }) => <th className="text-left text-[11px] font-semibold text-amber-300 px-3 py-2 border-b border-amber-500/20">{children}</th>,
+                      td: ({ children }) => <td className="text-[11px] text-gray-400 px-3 py-1.5 border-b border-white/5 last:border-0">{children}</td>,
+                      tr: ({ children }) => <tr className="hover:bg-white/3 transition-colors">{children}</tr>,
                     }}
                   >{adaptedPlan.plan}</ReactMarkdown>
                 </div>
@@ -785,7 +796,7 @@ export default function DashboardPage() {
                 </div>
               ) : plan ? (
                 <div className="plan-markdown">
-                  <ReactMarkdown
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}
                     components={{
                       h1: ({ children }) => (
                         <h1 className="text-base font-black text-white mt-4 mb-2 first:mt-0 flex items-center gap-2">{children}</h1>

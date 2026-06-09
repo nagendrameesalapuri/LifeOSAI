@@ -7,6 +7,7 @@ import { Sidebar } from '@/components/layout/Sidebar';
 import { BookOpen, Mic, CheckCircle, Sparkles, Loader2, ChevronRight, History, Brain, BarChart3, ChevronDown, ChevronUp, Volume2 } from 'lucide-react';
 import { LessonView } from '@/components/learning/LessonView';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 const mdIndigo = {
   p: ({ children }: any) => <p className="text-sm text-gray-300 leading-relaxed">{children}</p>,
@@ -20,6 +21,11 @@ const mdIndigo = {
     </li>
   ),
   code: ({ children }: any) => <code className="text-[11px] bg-white/5 text-emerald-300 px-1 rounded font-mono">{children}</code>,
+  table: ({ children }: any) => <div className="overflow-x-auto my-2 rounded-lg border border-indigo-500/20"><table className="w-full text-xs">{children}</table></div>,
+  thead: ({ children }: any) => <thead className="bg-indigo-500/10">{children}</thead>,
+  th: ({ children }: any) => <th className="text-left text-[11px] font-semibold text-indigo-300 px-3 py-2 border-b border-indigo-500/20">{children}</th>,
+  td: ({ children }: any) => <td className="text-[11px] text-gray-400 px-3 py-1.5 border-b border-white/5">{children}</td>,
+  tr: ({ children }: any) => <tr className="hover:bg-white/3 transition-colors">{children}</tr>,
 };
 
 const GRAMMAR_TOPICS = [
@@ -288,7 +294,7 @@ export default function EnglishPage() {
                     <p className="text-sm font-semibold text-gray-300">Today's Lesson</p>
                     {lesson?.dayNumber && <p className="text-xs text-indigo-400">Day {lesson.dayNumber} of 30</p>}
                   </div>
-                  <button onClick={() => getLesson()} disabled={lessonLoading} className="lifeos-btn text-xs">
+                  <button onClick={() => { cache.delete('english_lesson_today'); getLesson(); }} disabled={lessonLoading} className="lifeos-btn text-xs">
                     <Sparkles size={12} className="mr-1.5" />
                     {lessonLoading ? 'Loading...' : 'Refresh'}
                   </button>
@@ -535,13 +541,13 @@ export default function EnglishPage() {
                   {correctResult.confidenceTip && (
                     <div className="lifeos-card bg-indigo-600/5 border-indigo-600/20">
                       <p className="text-xs text-indigo-400 mb-2">💪 Confidence</p>
-                      <ReactMarkdown components={{ ...mdIndigo, p: ({ children }: any) => <p className="text-sm text-white leading-relaxed">{children}</p> }}>{correctResult.confidenceTip}</ReactMarkdown>
+                      <ReactMarkdown remarkPlugins={[remarkGfm]} components={{ ...mdIndigo, p: ({ children }: any) => <p className="text-sm text-white leading-relaxed">{children}</p> }}>{correctResult.confidenceTip}</ReactMarkdown>
                     </div>
                   )}
 
                   {correctResult.encouragement && (
                     <div className="lifeos-card">
-                      <ReactMarkdown components={mdIndigo}>{correctResult.encouragement}</ReactMarkdown>
+                      <ReactMarkdown remarkPlugins={[remarkGfm]} components={mdIndigo}>{correctResult.encouragement}</ReactMarkdown>
                     </div>
                   )}
                 </motion.div>
@@ -728,14 +734,14 @@ export default function EnglishPage() {
                     {patterns.analysis.nextFocusArea && (
                       <div className="mt-4 bg-indigo-600/10 border border-indigo-600/20 rounded-xl p-3">
                         <p className="text-xs text-indigo-300 font-medium mb-1">This week's focus:</p>
-                        <ReactMarkdown components={{ ...mdIndigo, p: ({ children }: any) => <p className="text-sm text-white leading-relaxed">{children}</p> }}>{patterns.analysis.nextFocusArea}</ReactMarkdown>
+                        <ReactMarkdown remarkPlugins={[remarkGfm]} components={{ ...mdIndigo, p: ({ children }: any) => <p className="text-sm text-white leading-relaxed">{children}</p> }}>{patterns.analysis.nextFocusArea}</ReactMarkdown>
                       </div>
                     )}
 
                     {patterns.analysis.weeklyChallenge && (
                       <div className="mt-3 bg-amber-600/10 border border-amber-600/20 rounded-xl p-3">
                         <p className="text-xs text-amber-400 font-medium mb-1">Weekly Challenge:</p>
-                        <ReactMarkdown components={{ ...mdIndigo, p: ({ children }: any) => <p className="text-sm text-white leading-relaxed">{children}</p>, strong: ({ children }: any) => <strong className="text-amber-300 font-semibold">{children}</strong> }}>{patterns.analysis.weeklyChallenge}</ReactMarkdown>
+                        <ReactMarkdown remarkPlugins={[remarkGfm]} components={{ ...mdIndigo, p: ({ children }: any) => <p className="text-sm text-white leading-relaxed">{children}</p>, strong: ({ children }: any) => <strong className="text-amber-300 font-semibold">{children}</strong> }}>{patterns.analysis.weeklyChallenge}</ReactMarkdown>
                       </div>
                     )}
                   </div>

@@ -6,6 +6,7 @@ import { cache } from '@/lib/cache';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Sparkles, CheckCircle, Volume2, Loader2, BookOpen, History, Map, PenTool } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 const mdAmber = {
   p: ({ children }: any) => <p className="text-sm text-gray-300 leading-relaxed">{children}</p>,
@@ -19,6 +20,11 @@ const mdAmber = {
     </li>
   ),
   code: ({ children }: any) => <code className="text-[11px] bg-white/5 text-emerald-300 px-1 rounded font-mono">{children}</code>,
+  table: ({ children }: any) => <div className="overflow-x-auto my-2 rounded-lg border border-amber-500/20"><table className="w-full text-xs">{children}</table></div>,
+  thead: ({ children }: any) => <thead className="bg-amber-500/10">{children}</thead>,
+  th: ({ children }: any) => <th className="text-left text-[11px] font-semibold text-amber-300 px-3 py-2 border-b border-amber-500/20">{children}</th>,
+  td: ({ children }: any) => <td className="text-[11px] text-gray-400 px-3 py-1.5 border-b border-white/5">{children}</td>,
+  tr: ({ children }: any) => <tr className="hover:bg-white/3 transition-colors">{children}</tr>,
 };
 
 type Tab = 'lesson' | 'curriculum' | 'script' | 'history';
@@ -219,7 +225,7 @@ export default function KannadaPage() {
                 <p className="text-gray-400 text-sm mb-4">
                   The AI had trouble formatting today's lesson. Click Refresh to try again — it usually works on the second attempt.
                 </p>
-                <button onClick={() => getLesson()} className="lifeos-btn px-6 py-2">
+                <button onClick={() => { cache.delete('kannada_lesson_today'); getLesson(); }} className="lifeos-btn px-6 py-2">
                   Refresh Lesson
                 </button>
               </div>
@@ -248,14 +254,14 @@ export default function KannadaPage() {
                     </div>
                     {lesson.intro && (
                       <div className="text-sm text-gray-300 bg-[#1a1a2e] rounded-lg px-4 py-3 border-l-2 border-amber-400">
-                        <ReactMarkdown components={mdAmber}>{lesson.intro}</ReactMarkdown>
+                        <ReactMarkdown remarkPlugins={[remarkGfm]} components={mdAmber}>{lesson.intro}</ReactMarkdown>
                       </div>
                     )}
                     {lesson.teluguBridge && (
                       <div className="mt-3 bg-emerald-600/10 border border-emerald-600/20 rounded-lg px-4 py-2">
                         <p className="text-xs text-emerald-400 font-medium">Telugu → Kannada Bridge:</p>
                         <div className="text-sm text-white mt-1">
-                          <ReactMarkdown components={{ ...mdAmber, p: ({ children }: any) => <p className="text-sm text-white leading-relaxed">{children}</p>, strong: ({ children }: any) => <strong className="text-emerald-300 font-semibold">{children}</strong> }}>{lesson.teluguBridge}</ReactMarkdown>
+                          <ReactMarkdown remarkPlugins={[remarkGfm]} components={{ ...mdAmber, p: ({ children }: any) => <p className="text-sm text-white leading-relaxed">{children}</p>, strong: ({ children }: any) => <strong className="text-emerald-300 font-semibold">{children}</strong> }}>{lesson.teluguBridge}</ReactMarkdown>
                         </div>
                       </div>
                     )}
@@ -376,7 +382,7 @@ export default function KannadaPage() {
                   {lesson.culturalNote && (
                     <div className="lifeos-card bg-amber-600/5 border-amber-600/20">
                       <p className="text-xs text-amber-400 font-medium mb-2">🏛️ Cultural Connection</p>
-                      <ReactMarkdown components={mdAmber}>{lesson.culturalNote}</ReactMarkdown>
+                      <ReactMarkdown remarkPlugins={[remarkGfm]} components={mdAmber}>{lesson.culturalNote}</ReactMarkdown>
                     </div>
                   )}
 
@@ -384,14 +390,14 @@ export default function KannadaPage() {
                   {lesson.todayChallenge && (
                     <div className="lifeos-card bg-yellow-500/5 border-yellow-500/20">
                       <p className="text-xs text-yellow-400 font-bold uppercase tracking-wide mb-2">🎯 Today's Challenge</p>
-                      <ReactMarkdown components={{ ...mdAmber, p: ({ children }: any) => <p className="text-sm text-white leading-relaxed">{children}</p>, strong: ({ children }: any) => <strong className="text-yellow-300 font-semibold">{children}</strong> }}>{lesson.todayChallenge}</ReactMarkdown>
+                      <ReactMarkdown remarkPlugins={[remarkGfm]} components={{ ...mdAmber, p: ({ children }: any) => <p className="text-sm text-white leading-relaxed">{children}</p>, strong: ({ children }: any) => <strong className="text-yellow-300 font-semibold">{children}</strong> }}>{lesson.todayChallenge}</ReactMarkdown>
                       <p className="text-xs text-gray-500 mt-2">Try this with your family or anyone around you!</p>
                     </div>
                   )}
 
                   {lesson.encouragement && (
                     <div className="lifeos-card bg-indigo-600/5 border-indigo-600/20">
-                      <ReactMarkdown components={{ ...mdAmber, p: ({ children }: any) => <p className="text-sm text-indigo-300 leading-relaxed">{children}</p>, strong: ({ children }: any) => <strong className="text-indigo-200 font-semibold">{children}</strong>, em: ({ children }: any) => <em className="text-indigo-400 italic">{children}</em> }}>{lesson.encouragement}</ReactMarkdown>
+                      <ReactMarkdown remarkPlugins={[remarkGfm]} components={{ ...mdAmber, p: ({ children }: any) => <p className="text-sm text-indigo-300 leading-relaxed">{children}</p>, strong: ({ children }: any) => <strong className="text-indigo-200 font-semibold">{children}</strong>, em: ({ children }: any) => <em className="text-indigo-400 italic">{children}</em> }}>{lesson.encouragement}</ReactMarkdown>
                     </div>
                   )}
 
@@ -402,7 +408,7 @@ export default function KannadaPage() {
                       <CheckCircle size={15} />
                       {saved ? '✅ Saved!' : saving ? 'Saving...' : 'Complete Lesson'}
                     </button>
-                    <button onClick={() => getLesson()} className="lifeos-btn-ghost px-6 py-3 text-sm">
+                    <button onClick={() => { cache.delete('kannada_lesson_today'); getLesson(); }} className="lifeos-btn-ghost px-6 py-3 text-sm">
                       Refresh →
                     </button>
                   </div>
