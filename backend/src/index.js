@@ -41,15 +41,14 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString(), service: 'lifeos-backend' });
 });
 
-// DB connectivity check (no auth — temp diagnostic)
+// DB connectivity check (no auth)
 app.get('/api/health/db', async (req, res) => {
   const prisma = require('./lib/prisma');
   try {
-    await prisma.$queryRaw`SELECT 1`;
-    const userCount = await prisma.user.count();
-    res.json({ db: 'ok', users: userCount });
+    const users = await prisma.user.count();
+    res.json({ db: 'ok', users });
   } catch (e) {
-    res.status(503).json({ db: 'error', code: e.code, message: e.message?.slice(0, 300) });
+    res.status(503).json({ db: 'error', code: e.code, message: e.message?.slice(0, 200) });
   }
 });
 
