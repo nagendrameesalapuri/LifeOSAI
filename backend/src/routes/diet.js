@@ -1,12 +1,13 @@
 const router = require('express').Router();
 const diet = require('../services/diet');
+const { invalidateUserCache } = require('../middleware/cache');
 
 router.post('/log', async (req, res) => {
-  try { res.json(await diet.logDiet(req.user.id, req.body)); } catch (e) { res.status(500).json({ error: e.message }); }
+  try { invalidateUserCache(req.user.id); res.json(await diet.logDiet(req.user.id, req.body)); } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 router.post('/replace', async (req, res) => {
-  try { res.json(await diet.replaceDiet(req.user.id, req.body)); } catch (e) { res.status(500).json({ error: e.message }); }
+  try { invalidateUserCache(req.user.id); res.json(await diet.replaceDiet(req.user.id, req.body)); } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 router.get('/today', async (req, res) => {
@@ -71,7 +72,7 @@ router.get('/barcode/:code', async (req, res) => {
 });
 
 router.post('/water', async (req, res) => {
-  try { res.json(await diet.logWater(req.user.id, req.body.litres)); } catch (e) { res.status(500).json({ error: e.message }); }
+  try { invalidateUserCache(req.user.id); res.json(await diet.logWater(req.user.id, req.body.litres)); } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 router.get('/water/today', async (req, res) => {

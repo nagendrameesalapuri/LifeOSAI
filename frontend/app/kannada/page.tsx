@@ -5,6 +5,21 @@ import { useApi } from '@/lib/hooks/useApi';
 import { cache } from '@/lib/cache';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Sparkles, CheckCircle, Volume2, Loader2, BookOpen, History, Map, PenTool } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+
+const mdAmber = {
+  p: ({ children }: any) => <p className="text-sm text-gray-300 leading-relaxed">{children}</p>,
+  strong: ({ children }: any) => <strong className="text-amber-300 font-semibold">{children}</strong>,
+  em: ({ children }: any) => <em className="text-amber-400 italic">{children}</em>,
+  ul: ({ children }: any) => <ul className="space-y-0.5 ml-1 mt-1">{children}</ul>,
+  li: ({ children }: any) => (
+    <li className="flex items-start gap-1.5 text-sm text-gray-300 leading-relaxed">
+      <span className="text-amber-400 mt-0.5 shrink-0">▸</span>
+      <span>{children}</span>
+    </li>
+  ),
+  code: ({ children }: any) => <code className="text-[11px] bg-white/5 text-emerald-300 px-1 rounded font-mono">{children}</code>,
+};
 
 type Tab = 'lesson' | 'curriculum' | 'script' | 'history';
 
@@ -232,14 +247,16 @@ export default function KannadaPage() {
                       )}
                     </div>
                     {lesson.intro && (
-                      <p className="text-sm text-gray-300 bg-[#1a1a2e] rounded-lg px-4 py-3 border-l-2 border-amber-400">
-                        {lesson.intro}
-                      </p>
+                      <div className="text-sm text-gray-300 bg-[#1a1a2e] rounded-lg px-4 py-3 border-l-2 border-amber-400">
+                        <ReactMarkdown components={mdAmber}>{lesson.intro}</ReactMarkdown>
+                      </div>
                     )}
                     {lesson.teluguBridge && (
                       <div className="mt-3 bg-emerald-600/10 border border-emerald-600/20 rounded-lg px-4 py-2">
                         <p className="text-xs text-emerald-400 font-medium">Telugu → Kannada Bridge:</p>
-                        <p className="text-sm text-white">{lesson.teluguBridge}</p>
+                        <div className="text-sm text-white mt-1">
+                          <ReactMarkdown components={{ ...mdAmber, p: ({ children }: any) => <p className="text-sm text-white leading-relaxed">{children}</p>, strong: ({ children }: any) => <strong className="text-emerald-300 font-semibold">{children}</strong> }}>{lesson.teluguBridge}</ReactMarkdown>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -358,8 +375,8 @@ export default function KannadaPage() {
                   {/* Cultural Note */}
                   {lesson.culturalNote && (
                     <div className="lifeos-card bg-amber-600/5 border-amber-600/20">
-                      <p className="text-xs text-amber-400 font-medium mb-1">🏛️ Cultural Connection</p>
-                      <p className="text-sm text-gray-300">{lesson.culturalNote}</p>
+                      <p className="text-xs text-amber-400 font-medium mb-2">🏛️ Cultural Connection</p>
+                      <ReactMarkdown components={mdAmber}>{lesson.culturalNote}</ReactMarkdown>
                     </div>
                   )}
 
@@ -367,14 +384,14 @@ export default function KannadaPage() {
                   {lesson.todayChallenge && (
                     <div className="lifeos-card bg-yellow-500/5 border-yellow-500/20">
                       <p className="text-xs text-yellow-400 font-bold uppercase tracking-wide mb-2">🎯 Today's Challenge</p>
-                      <p className="text-sm text-white">{lesson.todayChallenge}</p>
+                      <ReactMarkdown components={{ ...mdAmber, p: ({ children }: any) => <p className="text-sm text-white leading-relaxed">{children}</p>, strong: ({ children }: any) => <strong className="text-yellow-300 font-semibold">{children}</strong> }}>{lesson.todayChallenge}</ReactMarkdown>
                       <p className="text-xs text-gray-500 mt-2">Try this with your family or anyone around you!</p>
                     </div>
                   )}
 
                   {lesson.encouragement && (
                     <div className="lifeos-card bg-indigo-600/5 border-indigo-600/20">
-                      <p className="text-sm text-indigo-300">{lesson.encouragement}</p>
+                      <ReactMarkdown components={{ ...mdAmber, p: ({ children }: any) => <p className="text-sm text-indigo-300 leading-relaxed">{children}</p>, strong: ({ children }: any) => <strong className="text-indigo-200 font-semibold">{children}</strong>, em: ({ children }: any) => <em className="text-indigo-400 italic">{children}</em> }}>{lesson.encouragement}</ReactMarkdown>
                     </div>
                   )}
 

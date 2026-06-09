@@ -1,13 +1,12 @@
 const router = require('express').Router();
 const habits = require('../services/habits');
-const { cacheMiddleware, invalidateCache } = require('../middleware/cache');
+const { cacheMiddleware, invalidateUserCache } = require('../middleware/cache');
 
 const FIVE_MIN = 5 * 60 * 1000;
 
 router.post('/checkin', async (req, res) => {
   try {
-    invalidateCache(req.user.id, '/habits');
-    invalidateCache(req.user.id, '/analytics');
+    invalidateUserCache(req.user.id);
     res.json(await habits.checkIn(req.user.id, req.body));
   } catch (e) { res.status(500).json({ error: e.message }); }
 });

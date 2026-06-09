@@ -1,13 +1,12 @@
 const router = require('express').Router();
 const career = require('../services/career');
-const { cacheMiddleware, invalidateCache } = require('../middleware/cache');
+const { cacheMiddleware, invalidateUserCache } = require('../middleware/cache');
 
 const FIVE_MIN = 5 * 60 * 1000;
 
 router.post('/study', async (req, res) => {
   try {
-    invalidateCache(req.user.id, '/career');
-    invalidateCache(req.user.id, '/analytics');
+    invalidateUserCache(req.user.id);
     res.json(await career.logStudy(req.user.id, req.body));
   } catch (e) { res.status(500).json({ error: e.message }); }
 });

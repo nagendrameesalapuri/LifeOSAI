@@ -58,9 +58,9 @@ export default function DietPage() {
 
     Promise.all([
       api.getTodayDiet().catch(() => null),
-      api.getTodayWater().catch(() => null),
+      api.getTodayWater().catch(() => null),  // always fresh — Telegram may have logged water
     ]).then(([diet, waterData]) => {
-      cache.set('diet_today', { diet, water: waterData }, 2 * 60 * 1000);
+      cache.set('diet_today', { diet, water: waterData }, 30 * 1000); // 30s — Telegram syncs fast
       applyDietData(diet, waterData);
     }).finally(() => setLoadingToday(false));
   }, []);

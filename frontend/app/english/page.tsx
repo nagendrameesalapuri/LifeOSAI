@@ -6,6 +6,21 @@ import { cache } from '@/lib/cache';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { BookOpen, Mic, CheckCircle, Sparkles, Loader2, ChevronRight, History, Brain, BarChart3, ChevronDown, ChevronUp, Volume2 } from 'lucide-react';
 import { LessonView } from '@/components/learning/LessonView';
+import ReactMarkdown from 'react-markdown';
+
+const mdIndigo = {
+  p: ({ children }: any) => <p className="text-sm text-gray-300 leading-relaxed">{children}</p>,
+  strong: ({ children }: any) => <strong className="text-indigo-200 font-semibold">{children}</strong>,
+  em: ({ children }: any) => <em className="text-indigo-300 italic">{children}</em>,
+  ul: ({ children }: any) => <ul className="space-y-0.5 ml-1 mt-1">{children}</ul>,
+  li: ({ children }: any) => (
+    <li className="flex items-start gap-1.5 text-sm text-gray-300 leading-relaxed">
+      <span className="text-indigo-400 mt-0.5 shrink-0">▸</span>
+      <span>{children}</span>
+    </li>
+  ),
+  code: ({ children }: any) => <code className="text-[11px] bg-white/5 text-emerald-300 px-1 rounded font-mono">{children}</code>,
+};
 
 const GRAMMAR_TOPICS = [
   'When to use HAVE vs HAD vs HAS',
@@ -519,14 +534,14 @@ export default function EnglishPage() {
 
                   {correctResult.confidenceTip && (
                     <div className="lifeos-card bg-indigo-600/5 border-indigo-600/20">
-                      <p className="text-xs text-indigo-400 mb-1">💪 Confidence</p>
-                      <p className="text-sm text-white">{correctResult.confidenceTip}</p>
+                      <p className="text-xs text-indigo-400 mb-2">💪 Confidence</p>
+                      <ReactMarkdown components={{ ...mdIndigo, p: ({ children }: any) => <p className="text-sm text-white leading-relaxed">{children}</p> }}>{correctResult.confidenceTip}</ReactMarkdown>
                     </div>
                   )}
 
                   {correctResult.encouragement && (
                     <div className="lifeos-card">
-                      <p className="text-sm text-gray-300">{correctResult.encouragement}</p>
+                      <ReactMarkdown components={mdIndigo}>{correctResult.encouragement}</ReactMarkdown>
                     </div>
                   )}
                 </motion.div>
@@ -712,15 +727,15 @@ export default function EnglishPage() {
 
                     {patterns.analysis.nextFocusArea && (
                       <div className="mt-4 bg-indigo-600/10 border border-indigo-600/20 rounded-xl p-3">
-                        <p className="text-xs text-indigo-300 font-medium">This week's focus:</p>
-                        <p className="text-sm text-white mt-1">{patterns.analysis.nextFocusArea}</p>
+                        <p className="text-xs text-indigo-300 font-medium mb-1">This week's focus:</p>
+                        <ReactMarkdown components={{ ...mdIndigo, p: ({ children }: any) => <p className="text-sm text-white leading-relaxed">{children}</p> }}>{patterns.analysis.nextFocusArea}</ReactMarkdown>
                       </div>
                     )}
 
                     {patterns.analysis.weeklyChallenge && (
                       <div className="mt-3 bg-amber-600/10 border border-amber-600/20 rounded-xl p-3">
-                        <p className="text-xs text-amber-400 font-medium">Weekly Challenge:</p>
-                        <p className="text-sm text-white mt-1">{patterns.analysis.weeklyChallenge}</p>
+                        <p className="text-xs text-amber-400 font-medium mb-1">Weekly Challenge:</p>
+                        <ReactMarkdown components={{ ...mdIndigo, p: ({ children }: any) => <p className="text-sm text-white leading-relaxed">{children}</p>, strong: ({ children }: any) => <strong className="text-amber-300 font-semibold">{children}</strong> }}>{patterns.analysis.weeklyChallenge}</ReactMarkdown>
                       </div>
                     )}
                   </div>

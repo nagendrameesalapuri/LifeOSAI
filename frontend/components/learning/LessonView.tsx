@@ -2,6 +2,21 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CheckCircle, XCircle, Volume2 } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+
+const mdComponents = {
+  p: ({ children }: any) => <p className="text-sm leading-relaxed mb-1 last:mb-0">{children}</p>,
+  strong: ({ children }: any) => <strong className="text-white font-semibold">{children}</strong>,
+  em: ({ children }: any) => <em className="text-indigo-300 italic">{children}</em>,
+  ul: ({ children }: any) => <ul className="space-y-0.5 ml-1">{children}</ul>,
+  li: ({ children }: any) => (
+    <li className="flex items-start gap-1.5 text-sm leading-relaxed">
+      <span className="text-indigo-400 mt-0.5 shrink-0">▸</span>
+      <span>{children}</span>
+    </li>
+  ),
+  code: ({ children }: any) => <code className="text-[11px] bg-white/5 text-emerald-300 px-1 rounded font-mono">{children}</code>,
+};
 
 interface LessonViewProps {
   lesson: any;
@@ -34,15 +49,21 @@ export function LessonView({ lesson, showCompleteButton, onComplete, completing,
         </div>
         <div className="bg-indigo-600/10 border border-indigo-600/20 rounded-lg p-3 mb-3">
           <p className="text-xs text-indigo-400 font-medium mb-1">Simple Rule:</p>
-          <p className="text-sm text-white">{lesson.simpleRule}</p>
+          <div className="text-sm text-white">
+            <ReactMarkdown components={{ ...mdComponents, p: ({ children }: any) => <p className="text-sm text-white leading-relaxed">{children}</p>, em: ({ children }: any) => <em className="text-indigo-300 italic">{children}</em> }}>{lesson.simpleRule}</ReactMarkdown>
+          </div>
         </div>
         {lesson.whyItMatters && (
-          <p className="text-xs text-gray-500">💡 {lesson.whyItMatters}</p>
+          <div className="text-xs text-gray-400">
+            <ReactMarkdown components={{ ...mdComponents, p: ({ children }: any) => <p className="text-xs text-gray-400 leading-relaxed">💡 {children}</p> }}>{lesson.whyItMatters}</ReactMarkdown>
+          </div>
         )}
         {lesson.memoryTrick && (
           <div className="mt-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3">
             <p className="text-xs text-yellow-400 font-medium">🧠 Memory Trick:</p>
-            <p className="text-sm text-yellow-200 mt-1">{lesson.memoryTrick}</p>
+            <div className="text-sm text-yellow-200 mt-1">
+              <ReactMarkdown components={{ ...mdComponents, p: ({ children }: any) => <p className="text-sm text-yellow-200 leading-relaxed">{children}</p>, strong: ({ children }: any) => <strong className="text-yellow-100 font-semibold">{children}</strong> }}>{lesson.memoryTrick}</ReactMarkdown>
+            </div>
           </div>
         )}
       </div>
@@ -160,7 +181,9 @@ export function LessonView({ lesson, showCompleteButton, onComplete, completing,
       {(lesson.speakingChallenge || lesson.speakingTip) && (
         <div className="lifeos-card border-cyan-600/20 bg-cyan-600/5">
           <p className="text-xs text-cyan-400 font-medium mb-2">🎯 Speaking Challenge</p>
-          <p className="text-base text-white font-medium mb-2">"{lesson.speakingChallenge || lesson.speakingTip}"</p>
+          <div className="text-base text-white font-medium mb-2">
+            <ReactMarkdown components={{ ...mdComponents, p: ({ children }: any) => <p className="text-base text-white font-medium leading-relaxed">"{children}"</p>, strong: ({ children }: any) => <strong className="text-cyan-300 font-bold">{children}</strong> }}>{lesson.speakingChallenge || lesson.speakingTip}</ReactMarkdown>
+          </div>
           <p className="text-xs text-gray-500">Say this sentence out loud 5 times. Confidence comes from practice! 💪</p>
         </div>
       )}

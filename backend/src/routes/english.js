@@ -1,5 +1,6 @@
 const router = require('express').Router();
 const english = require('../services/english');
+const { invalidateUserCache } = require('../middleware/cache');
 
 router.post('/correct', async (req, res) => {
   try { res.json(await english.correctText(req.user.id, req.body.text)); } catch (e) { res.status(500).json({ error: e.message }); }
@@ -14,7 +15,7 @@ router.get('/lessons/history', async (req, res) => {
 });
 
 router.post('/lessons/complete', async (req, res) => {
-  try { res.json(await english.completeLesson(req.user.id, req.body.dayNumber)); } catch (e) { res.status(500).json({ error: e.message }); }
+  try { invalidateUserCache(req.user.id); res.json(await english.completeLesson(req.user.id, req.body.dayNumber)); } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 router.post('/speaking', async (req, res) => {

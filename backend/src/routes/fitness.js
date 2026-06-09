@@ -1,8 +1,9 @@
 const router = require('express').Router();
 const fitness = require('../services/fitness');
+const { invalidateUserCache } = require('../middleware/cache');
 
 router.post('/weight', async (req, res) => {
-  try { res.json(await fitness.logWeight(req.user.id, req.body)); } catch (e) { res.status(500).json({ error: e.message }); }
+  try { invalidateUserCache(req.user.id); res.json(await fitness.logWeight(req.user.id, req.body)); } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 router.get('/weight/history', async (req, res) => {
@@ -10,7 +11,7 @@ router.get('/weight/history', async (req, res) => {
 });
 
 router.post('/workout', async (req, res) => {
-  try { res.json(await fitness.logWorkout(req.user.id, req.body)); } catch (e) { res.status(500).json({ error: e.message }); }
+  try { invalidateUserCache(req.user.id); res.json(await fitness.logWorkout(req.user.id, req.body)); } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 router.get('/workout/history', async (req, res) => {

@@ -1,5 +1,6 @@
 const router = require('express').Router();
 const kannada = require('../services/kannada');
+const { invalidateUserCache } = require('../middleware/cache');
 
 router.get('/lesson', async (req, res) => {
   try { res.json(await kannada.getDailyLesson(req.user.id, req.query.day ? parseInt(req.query.day) : undefined)); } catch (e) { res.status(500).json({ error: e.message }); }
@@ -22,11 +23,11 @@ router.get('/lessons/history', async (req, res) => {
 });
 
 router.post('/lessons/complete', async (req, res) => {
-  try { res.json(await kannada.completeLesson(req.user.id, req.body.dayNumber)); } catch (e) { res.status(500).json({ error: e.message }); }
+  try { invalidateUserCache(req.user.id); res.json(await kannada.completeLesson(req.user.id, req.body.dayNumber)); } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 router.post('/log', async (req, res) => {
-  try { res.json(await kannada.logProgress(req.user.id, req.body)); } catch (e) { res.status(500).json({ error: e.message }); }
+  try { invalidateUserCache(req.user.id); res.json(await kannada.logProgress(req.user.id, req.body)); } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 router.get('/progress', async (req, res) => {
